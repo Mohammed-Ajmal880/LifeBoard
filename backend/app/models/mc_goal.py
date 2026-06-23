@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class MCGoal(Base):
     __tablename__="mc_goals"
@@ -11,4 +11,4 @@ class MCGoal(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
     completed = Column(Boolean, default=False)
-    completed_at = Column(DateTime, default=datetime.now(datetime.timezone.utc))
+    completed_at = Column(DateTime, default=datetime.now(timezone.utc))
