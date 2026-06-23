@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
 import app.models
+from app.routes.auth import router as auth_router
 
 app = FastAPI(title="LifeBoard API")
 
@@ -14,6 +15,7 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+app.include_router(auth_router)
 
 @app.get("/")
 def root():
