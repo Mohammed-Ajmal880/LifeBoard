@@ -7,7 +7,7 @@ class MCSession(Base):
     __tablename__ = "mc_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey=("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     world_name = Column(String, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
     description = Column(String, nullable=True)

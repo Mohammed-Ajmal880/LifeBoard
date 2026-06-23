@@ -8,7 +8,7 @@ class MCGoal(Base):
     __tablename__="mc_goals"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey=("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, default=datetime.now(datetime.timezone.utc))
