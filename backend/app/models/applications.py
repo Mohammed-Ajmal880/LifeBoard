@@ -15,4 +15,4 @@ class Application(Base):
     status = Column(String, default="applied")
     notes = Column(String, nullable=True)
     applied_date = Column(Date, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.now(datetime.timezone.utc))
