@@ -12,7 +12,8 @@ import uuid
 
 router = APIRouter(prefix="/cvs", tags=["CV Versions"])
 
-UPLOAD_DIR = "/uploads/cvs"
+UPLOAD_DIR = os.path.join(os.getcwd(), "uploads", "cvs")
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload", response_model=CVVersionOut)
@@ -28,7 +29,7 @@ def upload_cv(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
-    unique_filename = f"{uuid.uuid4}_{file.filename}"
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
     with open(file_path, "wb") as buffer:
