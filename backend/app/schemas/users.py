@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-import uuid
+from uuid import UUID
 
 class UserRegister(BaseModel):
     username: str
@@ -11,7 +11,7 @@ class UserLogin(BaseModel):
     password: str
 
 class UserOut(BaseModel):
-    id: uuid.UUID
+    id: UUID
     username: str
     email: str
     class Config:

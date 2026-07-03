@@ -6,7 +6,7 @@ from app.models.user import User
 from app.models.application import Application
 from app.schemas.application import ApplicationCreate, ApplicationUpdate, ApplicationOut
 from typing import List
-import uuid
+from uuid import UUID
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
@@ -43,7 +43,7 @@ def get_applications(
 
 @router.patch("/{application_id}", response_model=ApplicationOut)
 def update_application(
-    application_id: uuid.UUID,
+    application_id: UUID,
     data: ApplicationUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -81,7 +81,7 @@ def update_application(
 
 @router.delete("/{application_id}")
 def delete_application(
-    application_id: uuid.UUID,
+    application_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

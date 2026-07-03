@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.cv_version import CVVersion
 from app.schemas.cv import CVVersionOut
 from typing import List
-import uuid
+from uuid import UUID
 
 router = APIRouter(prefix="/cvs", tags=["CV Versions"])
 
@@ -29,7 +29,7 @@ def upload_cv(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    unique_filename = f"{UUID()}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
     with open(file_path, "wb") as buffer:
@@ -59,7 +59,7 @@ def get_cvs(
 
 @router.delete("/{cv_id}")
 def delete_cv(
-    cv_id: uuid.UUID,
+    cv_id: UUID,
     db: Session = Depends(get_db),
     current_user: Session = Depends(get_current_user)
 ):

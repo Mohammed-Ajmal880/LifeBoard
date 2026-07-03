@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from uuid import uuid
+from uuid import UUID
 from datetime import date, datetime
 from typing import Optional
 
@@ -16,7 +16,7 @@ class MCSessionUpdate(BaseModel):
     description: Optional[str] = None
 
 class MCSessionOut(BaseModel):
-    id: uuid.UUID
+    id: UUID
     world_name: str
     session_date: date
     duration_minutes: int
@@ -33,7 +33,7 @@ class MCGoalUpdate(BaseModel):
     completed: Optional[bool] = None
 
 class MCGoalOut(BaseModel):
-    id: uuid.UUID
+    id: UUID
     title: str
     completed: bool
     created_at: datetime
