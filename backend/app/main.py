@@ -5,6 +5,7 @@ import app.models
 from app.routes.auth import router as auth_router
 from app.routes.cv import router as cv_router
 from app.routes.application import router as application_router
+from app.routes.stats import router as stats_router
 
 app = FastAPI(title="LifeBoard API")
 
@@ -20,6 +21,7 @@ Base.metadata.create_all(bind=engine)
 app.include_router(auth_router)
 app.include_router(cv_router)
 app.include_router(application_router)
+app.include_router(stats_router)
 
 @app.get("/")
 def root():
