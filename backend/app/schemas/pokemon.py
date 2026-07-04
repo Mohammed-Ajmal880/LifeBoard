@@ -52,7 +52,7 @@ class TeamMemberCreate(BaseModel):
     nickname: Optional[str] = None
 
 class TeamMemberUpdate(BaseModel):
-    slot: Optional[int] = None
+    pokedex_number: int
     nickname: Optional[str] = None
 
 class TeamMemberOut(BaseModel):
