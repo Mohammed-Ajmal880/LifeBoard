@@ -1,4 +1,4 @@
 function InternTrackPage() {
-  return <div>Intern Track</div>
+  return <div>InternTrack</div>
 }
 export default InternTrackPage
