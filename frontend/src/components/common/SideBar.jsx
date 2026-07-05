@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { Briefcase, Gamepad2, Pickaxe, LayoutDashboard } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { label: 'Home',           path: '/dashboard',  icon: '🏠' },
-  { label: 'InternTrack',   path: '/interntrack', icon: '💼' },
-  { label: 'PokeLog',       path: '/pokelog',     icon: '⬟' },
-  { label: 'MinecraftStats',path: '/minecraft',   icon: '⛏' },
+  { label: 'Home',           path: '/dashboard',  icon: <LayoutDashboard size={16} /> },
+  { label: 'InternTrack',    path: '/interntrack', icon: <Briefcase size={16} />},
+  { label: 'PokeLog',        path: '/pokelog',     icon: <Gamepad2 size={16} />},
+  { label: 'MinecraftStats', path: '/minecraft',   icon: <Pickaxe size={16} />}
 ]
 
 function Sidebar({ collapsed }) {
@@ -47,7 +48,7 @@ function Sidebar({ collapsed }) {
           flexShrink:     0,
           boxShadow:      '0 0 14px rgba(124,58,237,0.5)',
         }}>
-          ⬟
+          LB
         </div>
         {!collapsed && (
           <div>

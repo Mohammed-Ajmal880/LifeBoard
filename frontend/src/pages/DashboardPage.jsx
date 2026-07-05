@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
+import { Briefcase, Gamepad2, Pickaxe, Target } from 'lucide-react'
 
 const MODULE_CARDS = [
   {
@@ -9,7 +10,7 @@ const MODULE_CARDS = [
     label:       'JOB HUNT CRM',
     title:       'InternTrack',
     description: 'Log every internship application — company, role, CV version, status and notes — in one place.',
-    icon:        '💼',
+    icon: <Briefcase size={22} color="#fff" />,
     path:        '/interntrack',
     statKey:     'active_applications',
     statLabel:   'active applications',
@@ -20,7 +21,7 @@ const MODULE_CARDS = [
     label:       'ANIME & GAMES',
     title:       'PokeLog',
     description: 'Track episodes watched, your in-game teams, and search a live Pokédex of every species.',
-    icon:        '⬟',
+    icon: <Gamepad2 size={22} color="#fff" />,
     path:        '/pokelog',
     statKey:     'episodes_watched',
     statLabel:   'episodes watched',
@@ -31,7 +32,7 @@ const MODULE_CARDS = [
     label:       'SESSION TRACKER',
     title:       'MinecraftStats',
     description: 'Log play sessions, set long-term goals, and visualise your weekly playtime as a chart.',
-    icon:        '⛏',
+    icon: <Pickaxe size={22} color="#fff" />,
     path:        '/minecraft',
     statKey:     'total_sessions',
     statLabel:   'sessions logged',
@@ -40,10 +41,10 @@ const MODULE_CARDS = [
 ]
 
 const GLANCE_CONFIG = [
-  { key: 'apps_awaiting_reply', label: 'Apps awaiting reply',   sublabel: 'INTERNTRACK',    icon: '💼', grad: 'linear-gradient(135deg,#7c3aed,#5b7cf6)' },
-  { key: 'episodes_watched',    label: 'Episodes watched',      sublabel: 'POKELOG',         icon: '⬟', grad: 'linear-gradient(135deg,#5b7cf6,#7c3aed)' },
-  { key: 'goals_in_progress',   label: 'Goals in progress',     sublabel: 'MINECRAFTSTATS',  icon: '🎯', grad: 'linear-gradient(135deg,#7c3aed,#a78bfa)' },
-  { key: 'weekly_playtime_hours',label: 'This week playtime',   sublabel: 'MINECRAFTSTATS',  icon: '⛏', grad: 'linear-gradient(135deg,#5b7cf6,#a78bfa)', suffix: 'h' },
+  { key: 'apps_awaiting_reply', label: 'Apps awaiting reply',   sublabel: 'INTERNTRACK',    icon: <Briefcase size={16} color="#fff" />, grad: 'linear-gradient(135deg,#7c3aed,#5b7cf6)' },
+  { key: 'episodes_watched',    label: 'Episodes watched',      sublabel: 'POKELOG',         icon: <Gamepad2  size={16} color="#fff" />, grad: 'linear-gradient(135deg,#5b7cf6,#7c3aed)' },
+  { key: 'goals_in_progress',   label: 'Goals in progress',     sublabel: 'MINECRAFTSTATS',  icon: <Target    size={16} color="#fff" />, grad: 'linear-gradient(135deg,#7c3aed,#a78bfa)' },
+  { key: 'weekly_playtime_hours',label: 'This week playtime',   sublabel: 'MINECRAFTSTATS',  icon: <Pickaxe   size={16} color="#fff" />, grad: 'linear-gradient(135deg,#5b7cf6,#a78bfa)', suffix: 'h' },
 ]
 
 function DashboardPage() {
@@ -114,6 +115,8 @@ function DashboardPage() {
                 transition:    'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
                 boxShadow:     `0 0 0 0 ${mod.glow}`,
               }}
+
+              
               onMouseEnter={e => {
                 e.currentTarget.style.transform   = 'translateY(-2px)'
                 e.currentTarget.style.boxShadow   = `0 0 24px ${mod.glow}, 0 8px 32px rgba(0,0,0,0.3)`
@@ -125,6 +128,20 @@ function DashboardPage() {
                 e.currentTarget.style.borderColor = 'var(--glass-border-strong)'
               }}
             >
+
+              <div style={{
+                position:     'absolute',
+                top:          '-40px',
+                right:        '-40px',
+                width:        '150px',
+                height:       '150px',
+                borderRadius: '50%',
+                background:   mod.glow,
+                filter:       'blur(50px)',
+                pointerEvents:'none',
+                zIndex:       0,
+              }} />
+              
               {/* Arrow */}
               <div style={{
                 position: 'absolute',
@@ -212,7 +229,43 @@ function DashboardPage() {
         borderRadius:  '16px',
         padding:       '24px',
         backdropFilter:'blur(16px)',
+        position:      'relative',
+        overflow:      'hidden',
       }}>
+        <div style={{
+        position:     'absolute',
+        top:          '-60px',
+        right:        '-60px',
+        width:        '200px',
+        height:       '200px',
+        borderRadius: '50%',
+        background:   'rgba(91,124,246,0.15)',
+        filter:       'blur(60px)',
+        pointerEvents:'none',
+        }} />
+        <div style={{
+          position:     'absolute',
+          top:          '-40px',
+          right:        '22%',
+          width:        '160px',
+          height:       '160px',
+          borderRadius: '50%',
+          background:   'rgba(124,58,237,0.12)',
+          filter:       'blur(50px)',
+          pointerEvents:'none',
+          }} />
+        <div style={{
+          position:     'absolute',
+          top:          '-40px',
+          right:        '48%',
+          width:        '160px',
+          height:       '160px',
+          borderRadius: '50%',
+          background:   'rgba(91,124,246,0.1)',
+          filter:       'blur(50px)',
+          pointerEvents:'none',
+          }} />
+
         <h3 style={{
           fontSize:     '17px',
           fontWeight:   700,
