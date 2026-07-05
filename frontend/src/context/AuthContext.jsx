@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState } from 'react'
 import api from '../services/api'
 
 const AuthContext = createContext(null)
@@ -6,16 +7,6 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(localStorage.getItem('token'))
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token)
-    } else {
-      localStorage.removeItem('token')
-    }
-    setLoading(false)
-  }, [token])
 
   const login = async (email, password) => {
     const formData = new FormData()
@@ -23,8 +14,10 @@ export function AuthProvider({ children }) {
     formData.append('password', password)
 
     const response = await api.post('/auth/login', formData)
-    setToken(response.data.access_token)
-    setUser(response.data.user)
+    const { access_token, user: userData } = response.data
+    localStorage.setItem('token', access_token)
+    setToken(access_token)
+    setUser(userData)
     return response.data
   }
 
@@ -34,18 +27,21 @@ export function AuthProvider({ children }) {
       email,
       password
     })
-    setToken(response.data.access_token)
-    setUser(response.data.user)
+    const { access_token, user: userData } = response.data
+    localStorage.setItem('token', access_token)
+    setToken(access_token)
+    setUser(userData)
     return response.data
   }
 
   const logout = () => {
+    localStorage.removeItem('token')
     setToken(null)
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )
