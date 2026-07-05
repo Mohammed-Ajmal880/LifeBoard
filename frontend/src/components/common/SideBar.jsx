@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
-  { label: 'Home',           path: '/dashboard',  icon: '⊞' },
+  { label: 'Home',           path: '/dashboard',  icon: '🏠' },
   { label: 'InternTrack',   path: '/interntrack', icon: '💼' },
   { label: 'PokeLog',       path: '/pokelog',     icon: '⬟' },
   { label: 'MinecraftStats',path: '/minecraft',   icon: '⛏' },
