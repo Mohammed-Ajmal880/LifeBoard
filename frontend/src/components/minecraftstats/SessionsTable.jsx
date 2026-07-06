@@ -45,14 +45,26 @@ function SessionsTable({ sessions, onRefresh }) {
   }
 
   return (
-    <div>
+    /* ✅ GLASSMORPHIC CARD WRAPPER */
+    <div className="glass-card" style={{
+      background: 'rgba(255, 255, 255, 0.03)',
+      border: '1px solid var(--glass-border-strong, rgba(255, 255, 255, 0.08))',
+      borderRadius: '16px',
+      padding: '20px',
+      backdropFilter: 'blur(16px)',
+      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.25)',
+      width: '100%',
+      boxSizing: 'border-box'
+    }}>
+      
+      {/* ✅ CORNER ALIGNED HEADER INSIDE THE CARD */}
       <div style={{
         display:        'flex',
         justifyContent: 'space-between',
         alignItems:     'center',
-        marginBottom:   '14px',
+        marginBottom:   '16px',
       }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>
+        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#fff' }}>
           Recent sessions
         </h3>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -60,6 +72,7 @@ function SessionsTable({ sessions, onRefresh }) {
         </span>
       </div>
 
+      {/* ✅ ORIGINAL UNTOUCHED TABLE LOGIC */}
       <div className="table-wrap">
         <table>
           <thead>

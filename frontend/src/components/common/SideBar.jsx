@@ -3,10 +3,10 @@ import { useAuth } from '../../context/AuthContext'
 import { Briefcase, Gamepad2, Pickaxe, LayoutDashboard } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { label: 'Home',           path: '/dashboard',  icon: <LayoutDashboard size={16} /> },
-  { label: 'InternTrack',    path: '/interntrack', icon: <Briefcase size={16} />},
-  { label: 'PokeLog',        path: '/pokelog',     icon: <Gamepad2 size={16} />},
-  { label: 'MinecraftStats', path: '/minecraft',   icon: <Pickaxe size={16} />}
+  { label: 'Dashboard',            path: '/dashboard',  icon: <LayoutDashboard size={16} /> },
+  { label: 'Applications',         path: '/interntrack', icon: <Briefcase size={16} />       },
+  { label: 'Pokemon Analytics',    path: '/pokelog',     icon: <Gamepad2 size={16} />        },
+  { label: 'Minecraft Analytics',  path: '/minecraft',   icon: <Pickaxe size={16} />         },
 ]
 
 function Sidebar({ collapsed }) {
@@ -23,7 +23,23 @@ function Sidebar({ collapsed }) {
       transition:     'width 0.3s cubic-bezier(0.16,1,0.3,1)',
       overflow:       'hidden',
       flexShrink:     0,
+      position:       'relative',
     }}>
+
+      {/* Purple glow orb behind nav items */}
+      <div style={{
+        position:      'absolute',
+        top:           '50%',
+        left:          '50%',
+        transform:     'translate(-50%, -60%)',
+        width:         '180px',
+        height:        '220px',
+        borderRadius:  '50%',
+        background:    'rgba(124, 58, 237, 0.12)',
+        filter:        'blur(40px)',
+        pointerEvents: 'none',
+        zIndex:        0,
+      }} />
 
       {/* Logo */}
       <div style={{
@@ -34,8 +50,9 @@ function Sidebar({ collapsed }) {
         alignItems:     'center',
         justifyContent: collapsed ? 'center' : 'flex-start',
         gap:            '10px',
+        position:       'relative',
+        zIndex:         1,
       }}>
-        {/* Logo avatar */}
         <div style={{
           width:          '36px',
           height:         '36px',
@@ -44,9 +61,12 @@ function Sidebar({ collapsed }) {
           display:        'flex',
           alignItems:     'center',
           justifyContent: 'center',
-          fontSize:       '16px',
           flexShrink:     0,
           boxShadow:      '0 0 14px rgba(124,58,237,0.5)',
+          fontFamily:     'Orbitron, sans-serif',
+          fontSize:       '12px',
+          fontWeight:     900,
+          color:          '#fff',
         }}>
           LB
         </div>
@@ -85,13 +105,15 @@ function Sidebar({ collapsed }) {
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           padding:       '16px 20px 6px',
+          position:      'relative',
+          zIndex:        1,
         }}>
           Modules
         </div>
       )}
 
       {/* Nav items */}
-      <nav style={{ flex: 1 }}>
+      <nav style={{ flex: 1, position: 'relative', zIndex: 1 }}>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.path}
@@ -105,8 +127,9 @@ function Sidebar({ collapsed }) {
               borderRadius:   '8px',
               justifyContent: collapsed ? 'center' : 'flex-start',
               fontSize:       '13px',
-              fontWeight:     500,
-              color:          isActive ? '#fff' : 'var(--text-muted)',
+              fontWeight:     isActive ? 600 : 500,
+              color:          isActive ? '#ffffff' : 'rgba(220, 220, 240, 0.85)',
+              textShadow:     isActive ? '0 0 12px rgba(167,139,250,0.6)' : 'none',
               background:     isActive ? 'rgba(109,58,226,0.35)' : 'transparent',
               textDecoration: 'none',
               transition:     'all 0.2s',
@@ -116,24 +139,23 @@ function Sidebar({ collapsed }) {
           >
             {({ isActive }) => (
               <>
-                {/* Icon avatar */}
                 <div style={{
                   width:          '32px',
                   height:         '32px',
                   borderRadius:   '8px',
                   background:     isActive
                     ? 'linear-gradient(135deg, #7c3aed, #5b7cf6)'
-                    : 'rgba(255,255,255,0.05)',
+                    : 'rgba(255,255,255,0.06)',
                   border:         isActive
                     ? 'none'
-                    : '1px solid var(--glass-border)',
+                    : '1px solid rgba(255,255,255,0.08)',
                   display:        'flex',
                   alignItems:     'center',
                   justifyContent: 'center',
-                  fontSize:       '14px',
                   flexShrink:     0,
                   boxShadow:      isActive ? '0 0 10px rgba(124,58,237,0.4)' : 'none',
                   transition:     'all 0.2s',
+                  color:          isActive ? '#fff' : 'rgba(220,220,240,0.7)',
                 }}>
                   {item.icon}
                 </div>
@@ -144,8 +166,13 @@ function Sidebar({ collapsed }) {
         ))}
       </nav>
 
-      {/* Bottom */}
-      <div style={{ borderTop: '1px solid var(--glass-border)', padding: '8px 0' }}>
+      {/* Bottom sign out */}
+      <div style={{
+        borderTop:  '1px solid var(--glass-border)',
+        padding:    '8px 0',
+        position:   'relative',
+        zIndex:     1,
+      }}>
         <button
           onClick={logout}
           style={{
@@ -159,7 +186,7 @@ function Sidebar({ collapsed }) {
             width:          collapsed ? '100%' : 'calc(100% - 16px)',
             background:     'none',
             border:         'none',
-            color:          'var(--text-muted)',
+            color:          'rgba(200,200,220,0.7)',
             fontSize:       '13px',
             fontWeight:     500,
             cursor:         'pointer',
@@ -167,11 +194,11 @@ function Sidebar({ collapsed }) {
             whiteSpace:     'nowrap',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.color = '#f87171'
+            e.currentTarget.style.color      = '#f87171'
             e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.color = 'var(--text-muted)'
+            e.currentTarget.style.color      = 'rgba(200,200,220,0.7)'
             e.currentTarget.style.background = 'none'
           }}
         >
@@ -180,12 +207,13 @@ function Sidebar({ collapsed }) {
             height:         '32px',
             borderRadius:   '8px',
             background:     'rgba(255,255,255,0.05)',
-            border:         '1px solid var(--glass-border)',
+            border:         '1px solid rgba(255,255,255,0.08)',
             display:        'flex',
             alignItems:     'center',
             justifyContent: 'center',
             fontSize:       '14px',
             flexShrink:     0,
+            color:          'rgba(220,220,240,0.7)',
           }}>
             ↩
           </div>
