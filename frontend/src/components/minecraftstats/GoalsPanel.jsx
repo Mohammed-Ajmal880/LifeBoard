@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import GoalModal from './GoalModal'
 import api from '../../services/api'
+import ConfirmModal from '../common/ConfirmModal'
 
 function GoalsPanel({ goals, onRefresh }) {
   const [modalOpen,    setModalOpen]    = useState(false)
   const [editingGoal,  setEditingGoal]  = useState(null)
+  const [confirmOpen, setConfirmOpen]   = useState(false)
+  const [deletingId,  setDeletingId]    = useState(null)
 
   const handleSave = async (payload) => {
     try {
@@ -30,9 +33,14 @@ function GoalsPanel({ goals, onRefresh }) {
     }
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
+    setDeletingId(id)
+    setConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/goals/${id}`)
+      await api.delete(`/goals/${deletingId}`)
       onRefresh()
     } catch (err) {
       console.error(err)
@@ -46,13 +54,28 @@ function GoalsPanel({ goals, onRefresh }) {
 
   return (
     <div style={{
+      position: 'relative',
       background:    'var(--side-panel-bg)',
-      border:        '1px solid rgba(91,124,246,0.2)',
+      border:        '1px solid var(--glass-border-strong, rgba(255, 255, 255, 0.08))',
       borderRadius:  'var(--radius)',
       padding:       '18px',
       backdropFilter:'blur(20px)',
       height:        'fit-content',
     }}>
+
+      {/* ✨ GLOW 2: Cyan circle anchored directly at the top right corner */}
+      <div style={{
+        position: 'absolute',
+        top: '-60px',
+        right: '-80px',         
+        width: '280px',
+        height: '280px',
+        background: 'radial-gradient(circle, #3b82f6 1%, rgba(6, 182, 212, 0.02) 50%, transparent 100%)',
+        filter: 'blur(55px)',
+        pointerEvents: 'none',   
+        zIndex: 0,
+      }} />
+
       {/* Header */}
       <div style={{
         display:        'flex',
@@ -163,6 +186,13 @@ function GoalsPanel({ goals, onRefresh }) {
         onSave={handleSave}
         goal={editingGoal}
       />
+      <ConfirmModal
+      open={confirmOpen}
+  onClose={() => { setConfirmOpen(false); setDeletingId(null) }}
+  onConfirm={confirmDelete}
+  title="Delete Goal?"
+  message="This goal will be permanently deleted."
+/>
     </div>
   )
 }

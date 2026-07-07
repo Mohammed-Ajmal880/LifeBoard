@@ -1,6 +1,11 @@
 import SessionModal from './SessionModal'
 import { useState } from 'react'
 import api from '../../services/api'
+import ConfirmModal from '../common/ConfirmModal'
+
+
+
+
 
 function formatDuration(minutes) {
   const h = Math.floor(minutes / 60)
@@ -13,6 +18,8 @@ function formatDuration(minutes) {
 function SessionsTable({ sessions, onRefresh }) {
   const [modalOpen,     setModalOpen]     = useState(false)
   const [editingSession, setEditingSession] = useState(null)
+  const [confirmOpen, setConfirmOpen]   = useState(false)
+  const [deletingId,  setDeletingId]    = useState(null)
 
   const handleSave = async (payload) => {
     try {
@@ -34,19 +41,24 @@ function SessionsTable({ sessions, onRefresh }) {
     setModalOpen(true)
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this session?')) return
-    try {
-      await api.delete(`/sessions/${id}`)
-      onRefresh()
-    } catch (err) {
-      console.error(err)
-    }
+  const handleDelete = (id) => {
+  setDeletingId(id)
+  setConfirmOpen(true)
+}
+
+const confirmDelete = async () => {
+  try {
+    await api.delete(`/sessions/${deletingId}`)
+    onRefresh()
+  } catch (err) {
+    console.error(err)
   }
+}
 
   return (
     /* ✅ GLASSMORPHIC CARD WRAPPER */
     <div className="glass-card" style={{
+      position: 'relative',
       background: 'rgba(255, 255, 255, 0.03)',
       border: '1px solid var(--glass-border-strong, rgba(255, 255, 255, 0.08))',
       borderRadius: '16px',
@@ -56,6 +68,20 @@ function SessionsTable({ sessions, onRefresh }) {
       width: '100%',
       boxSizing: 'border-box'
     }}>
+
+      {/* ✨ GLOW 1: Purple circle at the middle-bottom bleeding outwards */}
+      <div style={{
+        position: 'absolute',
+        bottom: '-120px',        /* Pushes the center down to bleed into the weekly chart below */
+        left: '50%',
+        transform: 'translateX(-50%)', /* Perfectly centers it horizontally */
+        width: '400px',
+        height: '350px',
+        background: 'radial-gradient(circle, #7c3aed 0%, rgba(124, 58, 237, 0.02) 20%, transparent 100%)',
+        filter: 'blur(60px)',
+        pointerEvents: 'none',   /* Ensures it never disrupts table row text interactions */
+        zIndex: 0,
+      }} />
       
       {/* ✅ CORNER ALIGNED HEADER INSIDE THE CARD */}
       <div style={{
@@ -140,6 +166,13 @@ function SessionsTable({ sessions, onRefresh }) {
         onClose={() => { setModalOpen(false); setEditingSession(null) }}
         onSave={handleSave}
         session={editingSession}
+      />
+      <ConfirmModal
+      open={confirmOpen}
+      onClose={() => { setConfirmOpen(false); setDeletingId(null) }}
+      onConfirm={confirmDelete}
+      title="Delete session?"
+      message="This session will be permanently removed from your log."
       />
     </div>
   )

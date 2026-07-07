@@ -29,14 +29,14 @@ function Sidebar({ collapsed }) {
       {/* Purple glow orb behind nav items */}
       <div style={{
         position:      'absolute',
-        top:           '50%',
+        top:           '35%',
         left:          '50%',
         transform:     'translate(-50%, -60%)',
-        width:         '180px',
-        height:        '220px',
+        width:         '220px',
+        height:        '240px',
         borderRadius:  '50%',
         background:    'rgba(124, 58, 237, 0.12)',
-        filter:        'blur(40px)',
+        filter:        'blur(20px)',
         pointerEvents: 'none',
         zIndex:        0,
       }} />

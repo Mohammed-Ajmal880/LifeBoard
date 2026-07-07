@@ -41,12 +41,37 @@ function PokeLogPage() {
 
   return (
     <div className="page-container">
+      
+      <div style={{
+        position: 'fixed',
+        top: '40px',          
+        right: '-125px',        
+        width: '450px',
+        height: '450px',
+        background: 'radial-gradient(circle, rgba(124, 58, 237, 0.16) 0%, rgba(6, 182, 212, 0.06) 70%, transparent 100%)',
+        filter: 'blur(70px)',
+        pointerEvents: 'none', 
+        zIndex: 0              
+      }} />
+
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '600px',
+        height: '600px',
+        background: 'radial-gradient(circle, rgba(6, 182, 212, 0.11) 0%, rgba(124, 58, 237, 0.05) 70%, transparent 100%)',
+        filter: 'blur(90px)',
+        pointerEvents: 'none',
+        zIndex: 0
+      }} />
 
       {/* Page header */}
       <div className="page-header">
         <div>
           <p className="page-label">Module</p>
-          <h1 className="page-title">PokeLog</h1>
+          <h1 className="page-title">Pokemon Analytics</h1>
           <p className="page-subtitle">
             Episodes watched, in-game teams, and a live Pokédex.
           </p>

@@ -67,7 +67,10 @@ function WeeklyChart({ sessions }) {
       boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.25)',
       width: '100%',
       boxSizing: 'border-box',
-      marginTop: '30px'
+      marginTop: '30px',
+      isolation: 'isolate',
+      position: 'relative',
+      zIndex: 0
     }}>
       
       {/* 2. ✅ ALIGNED HEADER LABELS */}

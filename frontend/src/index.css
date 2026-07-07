@@ -24,7 +24,7 @@
   --text-primary:        #e8e8f0;
   --text-secondary:      #8888a8;
   --text-muted:          #44445a;
-  --side-panel-bg:       linear-gradient(150deg, rgba(30,30,80,0.95) 0%, rgba(18,18,60,0.98) 100%);
+  --side-panel-bg:       rgba(255, 255, 255, 0.03);
   --radius:              12px;
   --radius-sm:           8px;
   --sidebar-width:       220px;
@@ -197,7 +197,7 @@ input, select, textarea {
   inset:           0;
   background:      rgba(5, 5, 20, 0.75);
   backdrop-filter: blur(8px);
-  z-index:         100;
+  z-index:         1000;
   display:         flex;
   align-items:     center;
   justify-content: center;

@@ -4,6 +4,7 @@ import KanbanBoard from '../components/interntrack/KanbanBoard'
 import ApplicationTable from '../components/interntrack/ApplicationTable'
 import ApplicationModal from '../components/interntrack/ApplicationModal'
 import CVVault from '../components/interntrack/CVVault'
+import ConfirmModal from '../components/common/ConfirmModal'
 
 const TABS = ['Applications', 'CV Vault']
 const VIEWS = ['Kanban', 'Table']
@@ -16,6 +17,8 @@ function InternTrackPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingApp, setEditingApp] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [confirmOpen, setConfirmOpen]   = useState(false)
+  const [deletingId,  setDeletingId]    = useState(null)
 
   const fetchAll = async () => {
     try {
@@ -69,15 +72,19 @@ function InternTrackPage() {
     setModalOpen(true)
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this application?')) return
-    try {
-      await api.delete(`/applications/${id}`)
-      fetchAll()
-    } catch (err) {
-      console.error(err)
-    }
+  const handleDelete = (id) => {
+  setDeletingId(id)
+  setConfirmOpen(true)
+}
+
+const confirmDelete = async () => {
+  try {
+    await api.delete(`/applications/${deletingId}`)
+    fetchAll()
+  } catch (err) {
+    console.error(err)
   }
+}
 
   const handleAddNew = () => {
     setEditingApp(null)
@@ -101,14 +108,15 @@ function InternTrackPage() {
 
   return (
     <div className="page-container">
+      
 
       {/* Page header */}
       <div className="page-header">
         <div>
           <p className="page-label">Module</p>
-          <h1 className="page-title">InternTrack</h1>
+          <h1 className="page-title">Applications</h1>
           <p className="page-subtitle">
-            Every application, CV version, and outcome — in one calm board.
+            Every application, CV and outcome in one calm board.
           </p>
         </div>
         <button className="btn-gradient" onClick={handleAddNew}>
@@ -255,6 +263,13 @@ function InternTrackPage() {
         onSave={handleSave}
         application={editingApp}
         cvVersions={cvVersions}
+      />
+      <ConfirmModal
+      open={confirmOpen}
+      onClose={() => { setConfirmOpen(false); setDeletingId(null) }}
+      onConfirm={confirmDelete}
+      title="Delete Application?"
+      message="This application will be permanently deleted."
       />
     </div>
   )

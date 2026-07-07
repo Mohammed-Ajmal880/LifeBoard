@@ -60,14 +60,14 @@ function MinecraftPage() {
       value: loading ? '—' : activeGoals,
       sub:   'in progress',
       icon:  '🎯',
-      grad:  'linear-gradient(135deg, #5b7cf6, #7c3aed)',
+      grad:  'linear-gradient(135deg, #7c3aed, #5b7cf6)',
     },
     {
       label: 'SESSIONS',
       value: loading ? '—' : totalSessions,
       sub:   'logged',
       icon:  '🎮',
-      grad:  'linear-gradient(135deg, #7c3aed, #a78bfa)',
+      grad:  'linear-gradient(135deg, #7c3aed, #5b7cf6)',
     },
   ]
 
@@ -78,7 +78,7 @@ function MinecraftPage() {
       <div className="page-header">
         <div>
           <p className="page-label">Module</p>
-          <h1 className="page-title">MinecraftStats</h1>
+          <h1 className="page-title">Minecraft Analytics</h1>
           <p className="page-subtitle">
             Sessions, builds, and long-term goals across all your worlds.
           </p>

@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import CVModal from './CVModal'
 import api from '../../services/api'
+import ConfirmModal from '../common/ConfirmModal'
 
 function CVVault({ cvVersions, onRefresh }) {
   const [modalOpen, setModalOpen]   = useState(false)
   const [editingCV, setEditingCV]   = useState(null)
+  const [confirmOpen, setConfirmOpen]   = useState(false)
+  const [deletingId,  setDeletingId]    = useState(null)
 
   const handleSave = async (formData) => {
     try {
@@ -21,15 +24,19 @@ function CVVault({ cvVersions, onRefresh }) {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this CV? Applications linked to it will be unlinked.')) return
-    try {
-      await api.delete(`/cvs/${id}`)
-      onRefresh()
-    } catch (err) {
-      console.error(err)
-    }
+  const handleDelete = (id) => {
+  setDeletingId(id)
+  setConfirmOpen(true)
+}
+
+const confirmDelete = async () => {
+  try {
+    await api.delete(`/cvs/${deletingId}`)
+    onRefresh()
+  } catch (err) {
+    console.error(err)
   }
+}
 
   const handleEdit = (cv) => {
     setEditingCV(cv)
@@ -44,6 +51,45 @@ function CVVault({ cvVersions, onRefresh }) {
   return (
     <div>
       {/* Compact upload zone */}
+      {/* GLOW 1: Top-Left of 'Applied' column */}
+        <div style={{
+          position: 'absolute',
+          top: '-40px',
+          left: '-40px',
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(91, 124, 246, 0.05) 50%, transparent 100%)',
+          filter: 'blur(60px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
+
+        {/* GLOW 2: Top-Right of 'Rejected' column */}
+        <div style={{
+          position: 'absolute',
+          top: '-40px',
+          right: '-40px',
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.25) 0%, rgba(124, 58, 237, 0.03) 30%, transparent 100%)',
+          filter: 'blur(60px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
+
+        {/* GLOW 3: Dead-Center of the Kanban table layout */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '500px',
+          height: '500px',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.25) 0%, rgba(124, 58, 237, 0.04) 30%, transparent 10%)',
+          filter: 'blur(80px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }} />
       <div
         onClick={handleAdd}
         style={{
@@ -167,6 +213,13 @@ function CVVault({ cvVersions, onRefresh }) {
         onClose={() => { setModalOpen(false); setEditingCV(null) }}
         onSave={handleSave}
         cv={editingCV}
+      />
+      <ConfirmModal
+      open={confirmOpen}
+      onClose={() => { setConfirmOpen(false); setDeletingId(null) }}
+      onConfirm={confirmDelete}
+      title="Delete CV?"
+      message="This CV will be deleted. Applications linked to it will be unlinked."
       />
     </div>
   )
