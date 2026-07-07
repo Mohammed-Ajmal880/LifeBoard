@@ -72,7 +72,7 @@ function Teams({ teams, onRefresh }) {
 
   const confirmDeleteTeam = async () => {
     try {
-      await api.delete(`/teams/${confirmTeam.id}`)
+      await api.delete(`/pokemon_team/${confirmTeam.id}`)
       onRefresh()
     } catch (err) {
       console.error(err)
@@ -109,7 +109,7 @@ function Teams({ teams, onRefresh }) {
 
   const confirmRemoveMember = async () => {
     try {
-      await api.delete(`/teams/${confirmMember.teamId}/members/${confirmMember.slot}`)
+      await api.delete(`/pokemon_team/${confirmMember.teamId}/members/${confirmMember.slot}`)
       onRefresh()
     } catch (err) {
       console.error(err)
