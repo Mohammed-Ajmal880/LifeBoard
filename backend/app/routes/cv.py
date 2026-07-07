@@ -1,6 +1,6 @@
 import os
 import shutil
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth import get_current_user
@@ -56,6 +56,33 @@ def get_cvs(
     ):
     return db.query(CVVersion).filter(CVVersion.user_id == current_user.id).all()
 
+@router.patch("/{cv_id}", response_model=CVVersionOut)
+def update_cv(
+    cv_id: UUID,
+    label: str = Form(None),
+    type: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    cv = db.query(CVVersion).filter(
+        CVVersion.id == cv_id,
+        CVVersion.user_id == current_user.id
+    ).first()
+
+    if not cv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="CV not found"
+        )
+
+    if label is not None:
+        cv.label = label
+    if type is not None:
+        cv.type = type
+
+    db.commit()
+    db.refresh(cv)
+    return cv
 
 @router.delete("/{cv_id}")
 def delete_cv(
