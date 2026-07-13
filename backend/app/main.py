@@ -11,6 +11,7 @@ from app.routes.mc_goal import router as mc_goal_router
 from app.routes.watchlog import router as watchlog_router
 from app.routes.pokemon_team import router as pokemon_team_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.battle import router as battle_router
 
 app = FastAPI(title="LifeBoard API")
 
@@ -35,6 +36,7 @@ app.include_router(mc_goal_router)
 app.include_router(watchlog_router)
 app.include_router(pokemon_team_router)
 app.include_router(dashboard_router)
+app.include_router(battle_router)
 
 @app.get("/")
 def root():
