@@ -233,6 +233,7 @@ def submit_move(
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_current_user)
 ):
+    state = battle_states.get(str(battle_id))
     # If player is switching active Pokémon
     if data.active_slot is not None:
     # Find the index of the Pokémon in slot data.active_slot
@@ -243,7 +244,7 @@ def submit_move(
         )
         if new_idx is not None:
             state["active1"] = new_idx
-    state = battle_states.get(str(battle_id))
+    
     if not state:
         raise HTTPException(status_code=404, detail="Battle not found or expired")
 
