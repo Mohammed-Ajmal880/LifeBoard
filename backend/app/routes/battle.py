@@ -233,6 +233,16 @@ def submit_move(
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_current_user)
 ):
+    # If player is switching active Pokémon
+    if data.active_slot is not None:
+    # Find the index of the Pokémon in slot data.active_slot
+        new_idx = next(
+            (i for i, p in enumerate(state["team1"])
+            if p["slot"] == data.active_slot and not p["fainted"]),
+            None
+        )
+        if new_idx is not None:
+            state["active1"] = new_idx
     state = battle_states.get(str(battle_id))
     if not state:
         raise HTTPException(status_code=404, detail="Battle not found or expired")
@@ -250,41 +260,23 @@ def submit_move(
     attacker    = state["team1"][active1_idx] # Player
     defender    = state["team2"][active2_idx] # Opponent AI
 
-    if data.active_slot is not None:
-        new_idx = next(
-            (i for i, p in enumerate(state["team1"])
-             if p["slot"] == data.active_slot and not p["fainted"]),
-            None
-        )
-        if new_idx is None:
-            raise HTTPException(status_code=400, detail="Invalid or fainted Pokémon slot selected")
-            
-        # Update active player index
-        state["active1"] = new_idx
-        attacker = state["team1"][new_idx]
-        log.append(f"You withdrew your Pokémon and sent out {attacker['name'].capitalize()}!")
-        
-        #  OPPONENT AI SEIZES THE FREE TURN TO ATTACK 
-        opp_moves = [m for m in defender["moves"] if (m.get("power") or 0) > 0] or defender["moves"]
-        opp_move  = max(opp_moves, key=lambda m: m.get("power") or 0)
-        
+    # ── 1. NEW: ISOLATED OPPONENT OPENING ATTACK HANDLER ──
+    if getattr(data, "submitted_by", "player") == "opponent":
         opp_damage = calculate_damage(
-            opp_move.get("power") or 40, opp_move["type"],
+            data.move_power or 40, data.move_type,
             defender["attack"], attacker["defense"], attacker["type"],
         )
         attacker["current_hp"] = max(0, attacker["current_hp"] - opp_damage)
-        
-        opp_eff = get_effectiveness(opp_move["type"], attacker["type"])
-        opp_eff_text = " It's super effective!" if opp_eff == 2 else (" It's not very effective..." if opp_eff == 0.5 else "")
-        
-        log.append(f"{defender['name'].capitalize()} used {opp_move['name']}! Dealt {opp_damage} damage to {attacker['name'].capitalize()}.{opp_eff_text}")
-        
-        # Check if the freshly swapped-in Pokémon gets immediately knocked out
+        opp_eff = get_effectiveness(data.move_type, attacker["type"])
+        opp_eff_text = ""
+        if opp_eff == 2:   opp_eff_text = " It's super effective!"
+        if opp_eff == 0.5: opp_eff_text = " It's not very effective..."
+        log.append(f"{defender['name'].capitalize()} used {data.move_name}! Dealt {opp_damage} damage.{opp_eff_text}")
+
         if attacker["current_hp"] == 0:
             attacker["fainted"] = True
             fainted.append(attacker["name"])
             log.append(f"{attacker['name'].capitalize()} fainted!")
-            
             next1 = next((i for i, p in enumerate(state["team1"]) if not p["fainted"]), None)
             if next1 is None:
                 state["battle_over"] = True
@@ -292,34 +284,31 @@ def submit_move(
                 log.append(f"All of {state['team1_name']} fainted! {state['team2_name']} wins!")
                 _end_battle(battle_id, "team2", db)
                 return _build_response(state, log, 0, opp_damage, fainted)
-                
             state["active1"] = next1
             log.append(f"{state['team1'][next1]['name'].capitalize()} was sent out!")
 
         state["turn_number"] += 1
         
-        # Record opponent's attack on database
+        # Save isolated opponent turn record
         turn = BattleTurn(
             battle_id      = battle_id,
             turn_number    = state["turn_number"],
             attacker_slot  = state["team2"][active2_idx]["slot"],
-            move_name      = opp_move["name"],
-            move_power     = opp_move.get("power"),
+            move_name      = data.move_name,
+            move_power     = data.move_power,
             damage_dealt   = opp_damage,
-            target_slot    = attacker["slot"],
+            target_slot    = state["team1"][active1_idx]["slot"],
             is_player_turn = "opponent",
         )
         db.add(turn)
         db.commit()
-
-        # 
         return _build_response(state, log, 0, opp_damage, fainted)
 
-    # 
+    # ── 2. STANDARD SIMULTANEOUS LOGIC ──
     goes_first = getattr(data, "goes_first", "team1")
 
     if goes_first == "team1":
-        #  PLAYER ATTACKS FIRST 
+        # ── PLAYER ATTACKS FIRST ──
         player_damage = calculate_damage(
             data.move_power or 40, data.move_type,
             attacker["attack"], defender["defense"], defender["type"],
@@ -376,7 +365,7 @@ def submit_move(
             log.append(f"{state['team1'][next1]['name'].capitalize()} was sent out!")
 
     else:
-        #  STANDARD PLAYER ATTACKS SECOND ROUNDS 
+        # ── STANDARD PLAYER ATTACKS SECOND ROUNDS ──
         opp_moves = [m for m in defender["moves"] if (m.get("power") or 0) > 0] or defender["moves"]
         opp_move      = max(opp_moves, key=lambda m: m.get("power") or 0)
         opp_damage    = calculate_damage(
