@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import HPBar from './HPBar'
 import MoveSelector from './MoveSelector'
 import BattleLog from './BattleLog'
@@ -12,55 +12,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   ])
   const [waiting, setWaiting] = useState(false)
   const [battleOver, setBattleOver] = useState(false)
-  const [winner, setWinner] = useState(null)
-  const hasTriggeredOpponentFirst = useRef(false)
-  const triggerOpponentMove = useRef(null)
-
-  // Define the function on the ref so useEffect can call it without dependencies
-  // eslint-disable-next-line react-hooks/refs
-  triggerOpponentMove.current = async () => {
-    setWaiting(true)
-    try {
-      const opponentPoke = battleState.team2[battleState.active2]
-      const bestMove = opponentPoke.moves.reduce((best, m) =>
-        (m.power || 0) > (best.power || 0) ? m : best
-        , opponentPoke.moves[0])
-
-      const res = await api.post(`/battles/${battleState.battle_id}/move`, {
-        move_name: bestMove.name,
-        move_power: bestMove.power || 40,
-        move_type: bestMove.type,
-      })
-      const data = res.data
-
-      setState(prev => ({
-        ...prev,         // ← uses latest state, not stale closure
-        team1: data.player_team,
-        team2: data.opponent_team,
-        active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
-        active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
-      }))
-
-      setLog(prev => [...prev, ...data.log])
-
-      if (data.battle_over) {
-        setBattleOver(true)
-        setWinner(data.winner)
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setWaiting(false)
-    }
-  }
-
-  // Runs once on mount — calls via ref so no dependency needed
-  useEffect(() => {
-    if (goesFirst === 'team2' && !hasTriggeredOpponentFirst.current) {
-      hasTriggeredOpponentFirst.current = true
-      triggerOpponentMove.current()
-    }
-  }, [goesFirst])
+  const [winner, setWinner] = useState(null)  
 
 
   if (!open) return null
