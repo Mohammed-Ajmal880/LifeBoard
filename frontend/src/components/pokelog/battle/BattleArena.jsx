@@ -1,18 +1,58 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import HPBar from './HPBar'
 import MoveSelector from './MoveSelector'
 import BattleLog from './BattleLog'
 import Portal from '../../common/Portal'
 import api from '../../../services/api'
 
+const triggeredBattles = new Set()
+
 function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [state, setState] = useState(battleState)
   const [log, setLog] = useState([
     `${goesFirst === 'team1' ? battleState.team1_name : battleState.team2_name} moves first!`
   ])
-  const [waiting, setWaiting] = useState(false)
+  const [waiting, setWaiting] = useState(goesFirst == "team2")
   const [battleOver, setBattleOver] = useState(false)
-  const [winner, setWinner] = useState(null)  
+  const [winner, setWinner] = useState(null)
+
+  useEffect(() => {
+    if (goesFirst !== 'team2') return
+    if (triggeredBattles.has(state.battle_id)) return
+    triggeredBattles.add(state.battle_id)
+
+    const opponentPoke = state.team2[state.active2]
+    const bestMove = opponentPoke.moves.reduce(
+      (best, m) => ((m.power || 0) > (best.power || 0) ? m : best),
+      opponentPoke.moves[0]
+    )
+
+    api.post(`/battles/${state.battle_id}/move`, {
+      move_name:  bestMove.name,
+      move_power: bestMove.power || 40,
+      move_type:  bestMove.type,
+      goes_first: goesFirst,
+      submitted_by: 'opponent',
+    }).then(res => {
+      const data = res.data
+      setState(prev => ({
+        ...prev,
+        team1:   data.player_team,
+        team2:   data.opponent_team,
+        active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
+        active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
+      }))
+      setLog(prev => [...prev, ...data.log])
+      if (data.battle_over) {
+        setBattleOver(true)
+        setWinner(data.winner)
+      }
+    }).catch(err => {
+      console.error(err)
+    }).finally(() => {
+      setWaiting(false)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   if (!open) return null
