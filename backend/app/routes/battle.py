@@ -218,6 +218,7 @@ async def start_battle(
         "turn_number":        1,
         "battle_over":        False,
         "winner":             None,
+        "goes_first":         data.goes_first,
         "team1_name":         team1.team_name,
         "team2_name":         team2.team_name,
     }
@@ -244,6 +245,60 @@ def submit_move(
     active2_idx = state["active2"]
     attacker   = state["team1"][active1_idx]
     defender   = state["team2"][active2_idx]
+    fainted    = []
+
+    # ── FRONTEND AI-MOVE SUBMISSION HANDLER ──
+    if getattr(data, "submitted_by", "player") == "opponent":
+        player_damage = 0
+        
+        # Calculate ONLY the Opponent AI's attack against the Player
+        opp_damage = calculate_damage(
+            data.move_power or 40,
+            data.move_type,
+            defender["attack"],
+            attacker["defense"],
+            attacker["type"],
+        )
+        attacker["current_hp"] = max(0, attacker["current_hp"] - opp_damage)
+        
+        opp_eff = get_effectiveness(data.move_type, attacker["type"])
+        opp_eff_text = ""
+        if opp_eff == 2:   opp_eff_text = " It's super effective!"
+        if opp_eff == 0.5: opp_eff_text = " It's not very effective..."
+        log.append(f"{defender['name'].capitalize()} used {data.move_name}! Dealt {opp_damage} damage.{opp_eff_text}")
+
+        # Check if Player's active Pokémon fainted from the opening strike
+        if attacker["current_hp"] == 0:
+            attacker["fainted"] = True
+            fainted.append(attacker["name"])
+            log.append(f"{attacker['name'].capitalize()} fainted!")
+            next1 = next((i for i, p in enumerate(state["team1"]) if not p["fainted"]), None)
+            
+            if next1 is None:
+                state["battle_over"] = True
+                state["winner"]      = "team2"
+                log.append(f"All of {state['team1_name']} fainted! {state['team2_name']} wins!")
+                _end_battle(battle_id, "team2", db)
+                return _build_response(state, log, 0, opp_damage, fainted)
+                
+            state["active1"] = next1
+            log.append(f"{state['team1'][next1]['name'].capitalize()} was sent out!")
+
+        state["turn_number"] += 1
+
+        # Record this turn log in your DB tracking table
+        turn = BattleTurn(
+            battle_id      = battle_id,
+            turn_number    = state["turn_number"],
+            move_name      = data.move_name,
+            damage_dealt   = opp_damage,
+            target_slot    = state["team1"][active1_idx]["slot"],
+            is_player_turn = "opponent",
+        )
+        db.add(turn)
+        db.commit()
+
+        return _build_response(state, log, 0, opp_damage, fainted)
 
     # Player move
     player_damage = calculate_damage(
@@ -260,8 +315,6 @@ def submit_move(
     if effectiveness == 0.5: eff_text = " It's not very effective..."
     if effectiveness == 0:   eff_text = " It had no effect."
     log.append(f"{attacker['name'].capitalize()} used {data.move_name}! Dealt {player_damage} damage.{eff_text}")
-
-    fainted = []
 
     # Check if defender fainted
     if defender["current_hp"] == 0:
@@ -283,43 +336,6 @@ def submit_move(
         defender         = state["team2"][next2]
         log.append(f"{defender['name'].capitalize()} was sent out!")
 
-    # Opponent AI move — pick move with highest power
-    opp_moves = [m for m in defender["moves"] if (m.get("power") or 0) > 0]
-    if not opp_moves:
-        opp_moves = defender["moves"]
-    opp_move      = max(opp_moves, key=lambda m: m.get("power") or 0)
-    opp_damage    = calculate_damage(
-        opp_move.get("power") or 40,
-        opp_move["type"],
-        defender["attack"],
-        attacker["defense"],
-        attacker["type"],
-    )
-    attacker["current_hp"] = max(0, attacker["current_hp"] - opp_damage)
-    opp_eff      = get_effectiveness(opp_move["type"], attacker["type"])
-    opp_eff_text = ""
-    if opp_eff == 2:   opp_eff_text = " It's super effective!"
-    if opp_eff == 0.5: opp_eff_text = " It's not very effective..."
-    log.append(f"{defender['name'].capitalize()} used {opp_move['name']}! Dealt {opp_damage} damage.{opp_eff_text}")
-
-    # Check if attacker fainted
-    if attacker["current_hp"] == 0:
-        attacker["fainted"] = True
-        fainted.append(attacker["name"])
-        log.append(f"{attacker['name'].capitalize()} fainted!")
-        next1 = next(
-            (i for i, p in enumerate(state["team1"]) if not p["fainted"]),
-            None
-        )
-        if next1 is None:
-            state["battle_over"] = True
-            state["winner"]      = "team2"
-            log.append(f"All of {state['team1_name']} fainted! {state['team2_name']} wins!")
-            _end_battle(battle_id, "team2", db)
-            return _build_response(state, log, player_damage, opp_damage, fainted)
-        state["active1"] = next1
-        attacker         = state["team1"][next1]
-        log.append(f"{attacker['name'].capitalize()} was sent out!")
 
     state["turn_number"] += 1
 

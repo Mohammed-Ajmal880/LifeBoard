@@ -146,6 +146,7 @@ function Teams({ teams, onRefresh }) {
             const res = await api.post('/battles/start', {
                 team1_id: pendingTeams.team1Id,
                 team2_id: pendingTeams.team2Id,
+                goes_first: choice,
             })
             setGoesFirst(choice)
             setBattleState(res.data)
