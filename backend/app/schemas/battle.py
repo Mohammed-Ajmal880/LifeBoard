@@ -6,6 +6,7 @@ from typing import Optional, List
 class BattleStart(BaseModel):
     team1_id: UUID
     team2_id: UUID
+    goes_first: str = "team1"
 
 class MoveSubmit(BaseModel):
     move_name:  str
