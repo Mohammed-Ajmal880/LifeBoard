@@ -14,6 +14,7 @@ class MoveSubmit(BaseModel):
     move_type:  str
     goes_first: str = "team1"
     submitted_by: str = "player"
+    active_slot: Optional[int] = None
 
 class TurnResult(BaseModel):
     turn_number:       int
