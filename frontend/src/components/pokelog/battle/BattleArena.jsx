@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import HPBar from './HPBar'
 import MoveSelector from './MoveSelector'
 import BattleLog from './BattleLog'
 import Portal from '../../common/Portal'
+import PokemonSelectModal from './PokemonSelectModal'
 import api from '../../../services/api'
-
-const triggeredBattles = new Set()
 
 function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [state, setState] = useState(battleState)
@@ -15,31 +14,33 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [waiting, setWaiting] = useState(goesFirst == "team2")
   const [battleOver, setBattleOver] = useState(false)
   const [winner, setWinner] = useState(null)
+  const [showSelectModal, setShowSelectModal] = useState(false)
+  const [modalReason, setModalReason] = useState('lead')
 
-  useEffect(() => {
-    if (goesFirst !== 'team2') return
-    if (triggeredBattles.has(state.battle_id)) return
-    triggeredBattles.add(state.battle_id)
+  // 1. Helper function: The opponent attacks ONLY AFTER you pick a lead.
+  const triggerOpponentOpeningTurn = async (forcedPlayerTeam) => {
+    setWaiting(true)
+    try {
+      const opponentPoke = state.team2[state.active2]
+      const bestMove = opponentPoke.moves.reduce(
+        (best, m) => ((m.power || 0) > (best.power || 0) ? m : best),
+        opponentPoke.moves[0]
+      )
 
-    const opponentPoke = state.team2[state.active2]
-    const bestMove = opponentPoke.moves.reduce(
-      (best, m) => ((m.power || 0) > (best.power || 0) ? m : best),
-      opponentPoke.moves[0]
-    )
+      const res = await api.post(`/battles/${state.battle_id}/move`, {
+        move_name: bestMove.name,
+        move_power: bestMove.power || 40,
+        move_type: bestMove.type,
+        goes_first: goesFirst,
+        submitted_by: 'opponent',
+      })
 
-    api.post(`/battles/${state.battle_id}/move`, {
-      move_name:  bestMove.name,
-      move_power: bestMove.power || 40,
-      move_type:  bestMove.type,
-      goes_first: goesFirst,
-      submitted_by: 'opponent',
-    }).then(res => {
       const data = res.data
       setState(prev => ({
         ...prev,
-        team1:   data.player_team,
-        team2:   data.opponent_team,
-        active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
+        team1: forcedPlayerTeam || data.player_team,
+        team2: data.opponent_team,
+        active1: (forcedPlayerTeam || data.player_team).findIndex(p => p.name === data.player_pokemon.name),
         active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
       }))
       setLog(prev => [...prev, ...data.log])
@@ -47,13 +48,62 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         setBattleOver(true)
         setWinner(data.winner)
       }
-    }).catch(err => {
+    } catch (err) {
       console.error(err)
-    }).finally(() => {
+    } finally {
       setWaiting(false)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }
 
+  
+
+  const handlePokemonSelect = async (selectedPoke) => {
+    const targetIdx = state.team1.findIndex(p => p.name === selectedPoke.name)
+    if (targetIdx === -1 || selectedPoke.fainted) return
+
+    setShowSelectModal(false) // Close the modal
+
+    // SCENARIO 1: Picking your lead at the start of the game
+    if (modalReason === 'lead') {
+      const updatedTeam = [...state.team1]
+      setState(prev => ({ ...prev, active1: targetIdx }))
+
+      // If opponent won the coin toss, they attack your newly chosen lead now!
+      if (goesFirst === 'team2') {
+        triggerOpponentOpeningTurn(updatedTeam)
+      }
+      return
+    }
+
+    // SCENARIO 2: Switching mid-battle
+    setWaiting(true)
+    try {
+      const res = await api.post(`/battles/${state.battle_id}/move`, {
+        active_slot: selectedPoke.slot, // Tells backend to switch, not attack
+        goes_first: goesFirst,
+        submitted_by: 'player'
+      })
+
+      const data = res.data
+      setState(prev => ({
+        ...prev,
+        team1: data.player_team,
+        team2: data.opponent_team,
+        active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
+        active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
+      }))
+      setLog(prev => [...prev, ...data.log])
+
+      if (data.battle_over) {
+        setBattleOver(true)
+        setWinner(data.winner)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setWaiting(false)
+    }
+  }
 
   if (!open) return null
 
@@ -299,7 +349,14 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
                   const isActive = i === state.active1
                   const isFainted = pokemon.fainted
                   return (
-                    <div key={i} style={{
+                    <div key={i} 
+                         onClick={() => {
+                          if (!isActive && !isFainted && !waiting && !battleOver) {
+                            setModalReason('switch')
+                            setShowSelectModal(true)
+                          }
+                        }}
+                         style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
@@ -342,6 +399,15 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           </div>
         </div>
       </div>
+      { /* Pokemon Select Modal */}
+      <PokemonSelectModal 
+        open={showSelectModal}
+        team={state.team1}
+        sprites={null}
+        reason={modalReason}
+        onSelect={handlePokemonSelect}
+      />
+
     </Portal>
   )
 }

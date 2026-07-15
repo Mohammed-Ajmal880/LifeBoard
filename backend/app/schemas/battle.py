@@ -9,9 +9,9 @@ class BattleStart(BaseModel):
     goes_first: str = "team1"
 
 class MoveSubmit(BaseModel):
-    move_name:  str
-    move_power: Optional[int] = None
-    move_type:  str
+    move_name:      Optional[str] = None
+    move_power:     Optional[int] = None
+    move_type:      Optional[str] = None
     goes_first: str = "team1"
     submitted_by: str = "player"
     active_slot: Optional[int] = None
