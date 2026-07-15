@@ -13,6 +13,7 @@ class MoveSubmit(BaseModel):
     move_power: Optional[int] = None
     move_type:  str
     goes_first: str = "team1"
+    submitted_by: str = "player"
 
 class TurnResult(BaseModel):
     turn_number:       int
