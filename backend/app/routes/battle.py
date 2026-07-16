@@ -234,22 +234,21 @@ def submit_move(
     current_user: User    = Depends(get_current_user)
 ):
     state = battle_states.get(str(battle_id))
-    # If player is switching active Pokémon
-    if data.active_slot is not None:
-    # Find the index of the Pokémon in slot data.active_slot
-        new_idx = next(
-            (i for i, p in enumerate(state["team1"])
-            if p["slot"] == data.active_slot and not p["fainted"]),
-            None
-        )
-        if new_idx is not None:
-            state["active1"] = new_idx
-    
+
     if not state:
         raise HTTPException(status_code=404, detail="Battle not found or expired")
 
     if state["battle_over"]:
         raise HTTPException(status_code=400, detail="Battle is already over")
+
+    if data.active_slot is not None:
+        new_idx = next(
+            (i for i, p in enumerate(state["team1"])
+             if p["slot"] == data.active_slot and not p["fainted"]),
+                None
+        )
+        if new_idx is not None:
+            state["active1"] = new_idx
 
     log         = []
     fainted     = []
