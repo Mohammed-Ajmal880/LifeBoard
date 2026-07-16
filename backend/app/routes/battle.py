@@ -250,6 +250,11 @@ def submit_move(
         if new_idx is not None:
             state["active1"] = new_idx
 
+    # If this is just a switch with no move, return updated state
+    if data.move_name is None:
+        state["turn_number"] += 1
+        return _build_response(state, ["Switched Pokémon!"], 0, 0, [])
+
     log         = []
     fainted     = []
     player_damage = 0
@@ -288,20 +293,22 @@ def submit_move(
             log.append(f"{state['team1'][next1]['name'].capitalize()} was sent out!")
 
         state["turn_number"] += 1
-        
-        # Save isolated opponent turn record
-        turn = BattleTurn(
-            battle_id      = battle_id,
-            turn_number    = state["turn_number"],
-            attacker_slot  = state["team2"][active2_idx]["slot"],
-            move_name      = data.move_name,
-            move_power     = data.move_power,
-            damage_dealt   = opp_damage,
-            target_slot    = state["team1"][active1_idx]["slot"],
-            is_player_turn = "opponent",
-        )
-        db.add(turn)
-        db.commit()
+
+        if data.move_name is not None:
+            # Save isolated opponent turn record
+            turn = BattleTurn(
+                battle_id      = battle_id,
+                turn_number    = state["turn_number"],
+                attacker_slot  = state["team2"][active2_idx]["slot"],
+                move_name      = data.move_name,
+                move_power     = data.move_power,
+                damage_dealt   = opp_damage,
+                target_slot    = state["team1"][active1_idx]["slot"],
+                is_player_turn = "opponent",
+            )
+            db.add(turn)
+            db.commit()
+
         return _build_response(state, log, 0, opp_damage, fainted)
 
     # ── 2. STANDARD SIMULTANEOUS LOGIC ──
