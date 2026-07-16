@@ -194,6 +194,7 @@ async def start_battle(
                 "defense":    poke_data[i]["defense"],
                 "moves":      poke_data[i]["moves"],
                 "sprite":     poke_data[i]["sprite"],
+                "back_sprite": poke_data[i]["back_sprite"],
                 "fainted":    False,
             }
             for i in range(len(members))
