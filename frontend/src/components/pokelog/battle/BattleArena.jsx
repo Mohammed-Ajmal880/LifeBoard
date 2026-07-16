@@ -100,6 +100,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         move_power: bestMove.power || 40,
         move_type: bestMove.type,
         active_slot: pokemon.slot,
+        submitted_by: 'opponent',
       }).then(res => {
         const data = res.data
         setState(prev => ({
