@@ -7,6 +7,42 @@ function BattleLog({ entries }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [entries])
 
+  const getEntryStyle = (entry) => {
+    let colour = 'rgba(255,255,255,0.6)'
+    let bold   = false
+    let italic = false
+
+    if (entry.includes('wins!') || entry.includes('fainted all')) {
+      colour = '#fde047'; bold = true
+    } else if (entry.includes('fainted')) {
+      colour = '#f87171'; bold = true
+    } else if (entry.includes('super effective')) {
+      colour = '#34d399'; bold = true
+    } else if (entry.includes('not very effective')) {
+      colour = '#fbbf24'
+    } else if (entry.includes('no effect')) {
+      colour = '#71717a'; italic = true
+    } else if (entry.includes('used')) {
+      colour = '#7dd3fc'
+    } else if (
+      entry.includes('moves first') ||
+      entry.includes('sent out') ||
+      entry.includes('Switched')
+    ) {
+      colour = '#a78bfa'
+    }
+
+    return {
+      fontSize:   '12px',
+      color:      colour,
+      margin:     0,
+      lineHeight: 1.5,
+      fontWeight: bold   ? 600    : 400,
+      fontStyle:  italic ? 'italic' : 'normal',
+      transition: 'color 0.2s',
+    }
+  }
+
   return (
     <div>
       <p style={{
@@ -36,47 +72,24 @@ function BattleLog({ entries }) {
             Battle not yet started...
           </p>
         ) : (
-          entries.map((entry, i) => {
-            const isSystem  = entry.startsWith('All of') || entry.includes('wins!')
-            const isFaint   = entry.includes('fainted')
-            const isSuper   = entry.includes('super effective')
-            const isNotVery = entry.includes('not very effective')
-            const isNoEffect= entry.includes('no effect')
-
-            let colour = 'var(--text-secondary)'
-            if (isSystem)   colour = '#a78bfa'
-            if (isFaint)    colour = '#f87171'
-            if (isSuper)    colour = '#4ade80'
-            if (isNotVery)  colour = '#facc15'
-            if (isNoEffect) colour = '#f87171'
-
-            return (
-              <div key={i} style={{
-                display:    'flex',
-                alignItems: 'flex-start',
-                gap:        '8px',
+          entries.map((entry, i) => (
+            <div key={i} style={{
+              display:    'flex',
+              alignItems: 'flex-start',
+              gap:        '8px',
+            }}>
+              <span style={{
+                fontSize:   '10px',
+                color:      'var(--text-muted)',
+                marginTop:  '2px',
+                flexShrink: 0,
+                fontFamily: 'JetBrains Mono, monospace',
               }}>
-                <span style={{
-                  fontSize:   '10px',
-                  color:      'var(--text-muted)',
-                  marginTop:  '2px',
-                  flexShrink: 0,
-                  fontFamily: 'JetBrains Mono, monospace',
-                }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <p style={{
-                  fontSize:   '12px',
-                  color:      colour,
-                  margin:     0,
-                  lineHeight: 1.5,
-                  fontWeight: isSystem || isFaint ? 600 : 400,
-                }}>
-                  {entry}
-                </p>
-              </div>
-            )
-          })
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <p style={getEntryStyle(entry)}>{entry}</p>
+            </div>
+          ))
         )}
         <div ref={bottomRef} />
       </div>
