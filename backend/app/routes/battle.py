@@ -312,7 +312,15 @@ def submit_move(
         return _build_response(state, log, 0, opp_damage, fainted)
 
     # ── 2. STANDARD SIMULTANEOUS LOGIC ──
-    goes_first = state.get("goes_first", "team1") if state["turn_number"] == 2 else "team1"
+    base_first = state.get("goes_first", "team1")
+    
+    if base_first == "team2":
+        # If opponent goes first overall, they should initiate on odd turns (1, 3, 5...)
+        # and player initiates on even turns (2, 4, 6...)
+        goes_first = "team2" if state["turn_number"] % 2 != 0 else "team1"
+    else:
+        # If player goes first overall, player initiates on odd turns (1, 3, 5...)
+        goes_first = "team1" if state["turn_number"] % 2 != 0 else "team2"
 
     if goes_first == "team1":
         # ── PLAYER ATTACKS FIRST ──
