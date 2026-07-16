@@ -130,6 +130,7 @@ async def fetch_pokemon_data(pokedex_number: int) -> dict:
             "defense": stats.get("defense", 45),
             "moves":   moves,
             "sprite":  data["sprites"]["front_default"],
+            "back_sprite": data["sprites"]["back_default"],
         }
 
 # In-memory battle state store

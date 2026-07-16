@@ -235,7 +235,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
 
             {/* Player sprite — left side, larger */}
             <img
-              src={playerPokemon.sprite}
+              src={playerPokemon.back_sprite || playerPokemon.sprite}
               alt={playerPokemon.name}
               style={{
                 position: 'absolute',
@@ -246,6 +246,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
                 imageRendering: 'pixelated',
                 filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))',
                 transition: 'filter 0.5s ease',
+                transform:      'scaleX(1)',
               }}
             />
 
