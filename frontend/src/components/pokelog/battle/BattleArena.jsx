@@ -84,53 +84,22 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
 
   const handlePokemonSelect = (pokemon) => {
     const newIdx = state.team1.findIndex(p => p.name === pokemon.name)
+    setState(prev => ({ ...prev, active1: newIdx }))
     setSelectingPokemon(false)
 
-    // ── SCENARIO A: Picking Lead ──
-    if (selectReason === 'lead') {
-      setState(prev => ({ ...prev, active1: newIdx }))
-
-      if (goesFirst === 'team2') {
-        setWaiting(true)
-        const opponentPoke = state.team2[state.active2]
-        const bestMove = opponentPoke.moves.reduce(
-          (best, m) => ((m.power || 0) > (best.power || 0) ? m : best),
-          opponentPoke.moves[0]
-        )
-        // ✅ Tell backend the opponent is attacking, using default fallback properties
-        api.post(`/battles/${state.battle_id}/move`, {
-          move_name: bestMove.name,
-          move_power: bestMove.power || 40,
-          move_type: bestMove.type,
-          goes_first: 'team2',
-          submitted_by: 'opponent'
-        }).then(res => {
-          const data = res.data
-          setState(prev => ({
-            ...prev,
-            team1: data.player_team,
-            team2: data.opponent_team,
-            active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
-            active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
-          }))
-          setLog(prev => [...prev, ...data.log])
-          if (data.battle_over) {
-            setBattleOver(true)
-            setWinner(data.winner)
-          }
-        }).catch(err => console.error(err)).finally(() => setWaiting(false))
-      }
-      return
-    }
-
-    //  SCENARIO B: Faint or Mid-Game Switch 
-    if (selectReason === 'faint' || selectReason === 'switch') {
+    // Only trigger opponent move if this was lead selection + opponent goes first
+    if (selectReason === 'lead' && goesFirst === 'team2') {
       setWaiting(true)
-      // ✅ Actually send the switch request to the backend so it can process the opponent's free hit!
+      const opponentPoke = state.team2[state.active2]
+      const bestMove = opponentPoke.moves.reduce(
+        (best, m) => ((m.power || 0) > (best.power || 0) ? m : best),
+        opponentPoke.moves[0]
+      )
       api.post(`/battles/${state.battle_id}/move`, {
+        move_name: bestMove.name,
+        move_power: bestMove.power || 40,
+        move_type: bestMove.type,
         active_slot: pokemon.slot,
-        goes_first: goesFirst,
-        submitted_by: 'player'
       }).then(res => {
         const data = res.data
         setState(prev => ({
@@ -145,8 +114,11 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           setBattleOver(true)
           setWinner(data.winner)
         }
-      }).catch(err => console.error(err)).finally(() => setWaiting(false))
+      }).catch(err => console.error(err))
+        .finally(() => setWaiting(false))
     }
+    // For faint reason — just update local state, no API call
+    // The active_slot will be sent with the next real move
   }
 
   return (
