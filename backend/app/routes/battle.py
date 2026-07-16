@@ -284,6 +284,8 @@ def submit_move(
             attacker["fainted"] = True
             fainted.append(attacker["name"])
             log.append(f"{attacker['name'].capitalize()} fainted!")
+
+            # 💡 Look for any remaining living Pokémon to determine if the game is over
             next1 = next((i for i, p in enumerate(state["team1"]) if not p["fainted"]), None)
             if next1 is None:
                 state["battle_over"] = True
@@ -291,8 +293,6 @@ def submit_move(
                 log.append(f"All of {state['team1_name']} fainted! {state['team2_name']} wins!")
                 _end_battle(battle_id, "team2", db)
                 return _build_response(state, log, 0, opp_damage, fainted)
-            state["active1"] = next1
-            log.append(f"{state['team1'][next1]['name'].capitalize()} was sent out!")
 
         state["turn_number"] += 1
 
@@ -378,8 +378,6 @@ def submit_move(
                 log.append(f"All of {state['team1_name']} fainted! {state['team2_name']} wins!")
                 _end_battle(battle_id, "team2", db)
                 return _build_response(state, log, player_damage, opp_damage, fainted)
-            state["active1"] = next1
-            log.append(f"{state['team1'][next1]['name'].capitalize()} was sent out!")
 
     else:
         # ── STANDARD PLAYER ATTACKS SECOND ROUNDS ──
@@ -407,9 +405,6 @@ def submit_move(
                 log.append(f"All of {state['team1_name']} fainted! {state['team2_name']} wins!")
                 _end_battle(battle_id, "team2", db)
                 return _build_response(state, log, 0, opp_damage, fainted)
-            state["active1"] = next1
-            attacker         = state["team1"][next1]
-            log.append(f"{attacker['name'].capitalize()} was sent out!")
             
         if not attacker["fainted"]:
             player_damage = calculate_damage(
