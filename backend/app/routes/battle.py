@@ -312,7 +312,7 @@ def submit_move(
         return _build_response(state, log, 0, opp_damage, fainted)
 
     # ── 2. STANDARD SIMULTANEOUS LOGIC ──
-    goes_first = state.get("goes_first", "team1") if state["turn_number"] == 1 else "team1"
+    goes_first = state.get("goes_first", "team1") if state["turn_number"] == 2 else "team1"
 
     if goes_first == "team1":
         # ── PLAYER ATTACKS FIRST ──
