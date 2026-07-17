@@ -477,28 +477,58 @@ def _build_response(state, log, player_damage, opp_damage, fainted):
     }
 
 
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func
+
+# ... your router setup ...
+
 @router.get("/history")
 def get_battle_history(
-    db:           Session = Depends(get_db),
-    current_user: User    = Depends(get_current_user)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    battles = db.query(Battle).filter(
-        Battle.user_id == current_user.id
-    ).order_by(Battle.created_at.desc()).all()
+    t1 = aliased(PokemonTeam)
+    t2 = aliased(PokemonTeam)
+
+    turn_counts = db.query(
+        BattleTurn.battle_id,
+        func.count(BattleTurn.id).label("turn_count")
+    ).group_by(BattleTurn.battle_id).subquery()
+
+    battles_data = db.query(
+        Battle,
+        t1.team_name.label("team1_name"),
+        t2.team_name.label("team2_name"),
+        func.coalesce(turn_counts.c.turn_count, 0).label("turns")
+    ).outerjoin(t1, Battle.team1_id == t1.id)\
+     .outerjoin(t2, Battle.team2_id == t2.id)\
+     .outerjoin(turn_counts, Battle.id == turn_counts.c.battle_id)\
+     .filter(Battle.user_id == current_user.id)\
+     .order_by(Battle.created_at.desc()).all()
 
     result = []
-    for b in battles:
-        team1 = db.query(PokemonTeam).filter(PokemonTeam.id == b.team1_id).first()
-        team2 = db.query(PokemonTeam).filter(PokemonTeam.id == b.team2_id).first()
-        turns = db.query(BattleTurn).filter(
-            BattleTurn.battle_id == b.id
-        ).count()
+    for row in battles_data:
+        b = row.Battle
+        
+        winner_status = b.winner if b.winner else "INCOMPLETE"
+
         result.append({
             "id":         str(b.id),
             "created_at": b.created_at.isoformat(),
-            "team1_name": team1.team_name if team1 else "Unknown",
-            "team2_name": team2.team_name if team2 else "Unknown",
-            "winner":     b.winner,
-            "turns":      turns,
+            "team1_name": row.team1_name or "Unknown",
+            "team2_name": row.team2_name or "Unknown",
+            "winner":     winner_status, 
+            "turns":      int(row.turns),
         })
+        
     return result
+
+@router.delete("/history")
+def clear_battle_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db.query(Battle).filter(Battle.user_id == current_user.id).delete(synchronize_session=False)
+    db.commit()
+    return {"message": "Battle history cleared successfully"}
