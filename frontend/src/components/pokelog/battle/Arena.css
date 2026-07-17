@@ -1,0 +1,53 @@
+/* ArenaBackground.css */
+
+.arena-container {
+  position: relative;
+  height: 320px;
+  background: 
+    radial-gradient(circle at 75% 30%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 25% 70%, rgba(124, 58, 237, 0.15) 0%, transparent 60%),
+    linear-gradient(to bottom, #111827 0%, #1f2937 45%, #374151 46%, #111827 100%);
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Perspective Grid Lines */
+.arena-grid {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 55%;
+  opacity: 0.15;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), 
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: '40px 40px';
+  transform: perspective(200px) rotateX(60deg);
+  transform-origin: top center;
+}
+
+/* Opponent Platform (Top Right) */
+.arena-platform-opponent {
+  position: absolute;
+  right: 80px;
+  top: 160px;
+  width: 220px;
+  height: 45px;
+  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.6) 0%, rgba(59, 130, 246, 0) 70%);
+  border-radius: 50%;
+  border: 2px dashed rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Player Platform (Bottom Left) */
+.arena-platform-player {
+  position: absolute;
+  left: 50px;
+  bottom: 25px;
+  width: 260px;
+  height: 55px;
+  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.6) 0%, rgba(124, 58, 237, 0) 70%);
+  border-radius: 50%;
+  border: 2px dashed rgba(124, 58, 237, 0.4);
+  box-shadow: 0 0 25px rgba(124, 58, 237, 0.5);
+}

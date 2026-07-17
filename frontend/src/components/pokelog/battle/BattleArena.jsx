@@ -5,6 +5,8 @@ import BattleLog from './BattleLog'
 import Portal from '../../common/Portal'
 import api from '../../../services/api'
 import PokemonSelectModal from './PokemonSelectModal'
+import ArenaBackground from './ArenaBackground'
+
 
 
 
@@ -231,114 +233,154 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
             </div>
           )}
 
-          {/* Arena field */}
-          <div style={{
-            position: 'relative',
-            height: '320px',
-            // 💡 Cleanly add the background imagery asset here:
-            backgroundImage: "url('/assets/Pokemon_bg2.jpg')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            imageRendering: 'pixelated', // Keep it sharp if you're using classic retro pixel-art scenery!
-            overflow: 'hidden',
-          }}>
-
-            {/* Opponent HP card — top right */}
+          <ArenaBackground>
+            {/* Arena field */}
             <div style={{
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              background: 'rgba(0,0,0,0.6)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '10px',
-              padding: '12px 16px',
-              minWidth: '220px',
-              backdropFilter: 'blur(8px)',
+              position: 'relative',
+              height: '320px',
+              background: `
+              radial-gradient(circle at 75% 30%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 25% 70%, rgba(124, 58, 237, 0.15) 0%, transparent 60%),
+              linear-gradient(to bottom, #111827 0%, #1f2937 45%, #374151 46%, #111827 100%)`,
+              overflow: 'hidden',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
-              <HPBar
-                current={opponentPokemon.current_hp}
-                max={opponentPokemon.max_hp}
-                label="Opponent"
-                sublabel={opponentPokemon.name.charAt(0).toUpperCase() + opponentPokemon.name.slice(1)}
-              />
-            </div>
 
-            {/* Opponent sprite — right side, smaller */}
-            <img
-              src={opponentPokemon.sprite}
-              alt={opponentPokemon.name}
-              style={{
-                position: 'absolute',
-                right: '120px',
-                top: '80px',
-                width: '160px',
-                height: '160px',
-                imageRendering: 'pixelated',
-                filter: opponentPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 12px rgba(59,130,246,0.4))',
-                transition: 'filter 0.5s ease',
-              }}
-            />
-
-            {/* Player sprite — left side, larger */}
-            <img
-              src={playerPokemon.back_sprite || playerPokemon.sprite}
-              alt={playerPokemon.name}
-              style={{
-                position: 'absolute',
-                left: '60px',
-                bottom: '80px',
-                width: '200px',
-                height: '200px',
-                imageRendering: 'pixelated',
-                filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))',
-                transition: 'filter 0.5s ease',
-                transform: 'scaleX(1)',
-              }}
-            />
-
-            {/* Player HP card — bottom left */}
-            <div style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '16px',
-              background: 'rgba(0,0,0,0.6)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '10px',
-              padding: '12px 16px',
-              minWidth: '240px',
-              backdropFilter: 'blur(8px)',
-            }}>
-              <HPBar
-                current={playerPokemon.current_hp}
-                max={playerPokemon.max_hp}
-                label="Your Pokémon"
-                sublabel={playerPokemon.name.charAt(0).toUpperCase() + playerPokemon.name.slice(1)}
-              />
-            </div>
-
-            {/* Turn indicator */}
-            {!battleOver && (
+              {/*  Perspective grid lines */}
               <div style={{
                 position: 'absolute',
-                bottom: '16px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: waiting ? 'rgba(255,255,255,0.08)' : 'rgba(124,58,237,0.3)',
-                border: '1px solid rgba(124,58,237,0.5)',
-                borderRadius: '20px',
-                padding: '6px 18px',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: waiting ? 'var(--text-muted)' : '#fff',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                transition: 'all 0.3s',
+                bottom: 0,
+                width: '100%',
+                height: '55%',
+                opacity: 0.15,
+                backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
+                transform: 'perspective(200px) rotateX(60deg)',
+                transformOrigin: 'top center',
+              }} />
+
+              {/* OPPONENT BATTLE PLATFORM (Top Right) */}
+              <div style={{
+                position: 'absolute',
+                right: '80px',
+                top: '180px',
+                width: '220px',
+                height: '45px',
+                background: 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.6) 0%, rgba(59, 130, 246, 0) 70%)',
+                borderRadius: '50%',
+                border: '2px dashed rgba(59, 130, 246, 0.3)',
+                boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)',
+              }} />
+
+              {/* PLAYER BATTLE PLATFORM (Bottom Left) */}
+              <div style={{
+                position: 'absolute',
+                left: '50px',
+                bottom: '85px',
+                width: '260px',
+                height: '55px',
+                background: 'radial-gradient(ellipse at center, rgba(124, 58, 237, 0.6) 0%, rgba(124, 58, 237, 0) 70%)',
+                borderRadius: '50%',
+                border: '2px dashed rgba(124, 58, 237, 0.4)',
+                boxShadow: '0 0 25px rgba(124, 58, 237, 0.5)',
+              }} />
+
+              {/* Opponent HP card — top right */}
+              <div style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(0,0,0,0.6)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                minWidth: '220px',
+                backdropFilter: 'blur(8px)',
               }}>
-                {waiting ? '⏳ Processing...' : '⚡ Your turn'}
+                <HPBar
+                  current={opponentPokemon.current_hp}
+                  max={opponentPokemon.max_hp}
+                  label="Opponent"
+                  sublabel={opponentPokemon.name.charAt(0).toUpperCase() + opponentPokemon.name.slice(1)}
+                />
               </div>
-            )}
-          </div>
+
+              {/* Opponent sprite — right side, smaller */}
+              <img
+                src={opponentPokemon.sprite}
+                alt={opponentPokemon.name}
+                style={{
+                  position: 'absolute',
+                  right: '120px',
+                  top: '80px',
+                  width: '160px',
+                  height: '160px',
+                  imageRendering: 'pixelated',
+                  filter: opponentPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 12px rgba(59,130,246,0.4))',
+                  transition: 'filter 0.5s ease',
+                }}
+              />
+
+              {/* Player sprite — left side, larger */}
+              <img
+                src={playerPokemon.back_sprite || playerPokemon.sprite}
+                alt={playerPokemon.name}
+                style={{
+                  position: 'absolute',
+                  left: '60px',
+                  bottom: '80px',
+                  width: '200px',
+                  height: '200px',
+                  imageRendering: 'pixelated',
+                  filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))',
+                  transition: 'filter 0.5s ease',
+                  transform: 'scaleX(1)',
+                }}
+              />
+
+              {/* Player HP card — bottom left */}
+              <div style={{
+                position: 'absolute',
+                bottom: '1px',
+                left: '16px',
+                background: 'rgba(0,0,0,0.6)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                minWidth: '240px',
+                backdropFilter: 'blur(8px)',
+              }}>
+                <HPBar
+                  current={playerPokemon.current_hp}
+                  max={playerPokemon.max_hp}
+                  label="Your Pokémon"
+                  sublabel={playerPokemon.name.charAt(0).toUpperCase() + playerPokemon.name.slice(1)}
+                />
+              </div>
+
+              {/* Turn indicator */}
+              {!battleOver && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '16px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: waiting ? 'rgba(255,255,255,0.08)' : 'rgba(124,58,237,0.3)',
+                  border: '1px solid rgba(124,58,237,0.5)',
+                  borderRadius: '20px',
+                  padding: '6px 18px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: waiting ? 'var(--text-muted)' : '#fff',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  transition: 'all 0.3s',
+                }}>
+                  {waiting ? '⏳ Processing...' : '⚡ Your turn'}
+                </div>
+              )}
+            </div>
+          </ArenaBackground>
 
           {/* Bottom section */}
           <div style={{
