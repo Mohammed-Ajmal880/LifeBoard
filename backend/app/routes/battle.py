@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func
 from app.database import get_db
 from app.auth import get_current_user
 from app.models.user import User
@@ -476,13 +477,6 @@ def _build_response(state, log, player_damage, opp_damage, fainted):
         "team2_name":     state["team2_name"],
     }
 
-
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session, aliased
-from sqlalchemy import func
-
-# ... your router setup ...
-
 @router.get("/history")
 def get_battle_history(
     db: Session = Depends(get_db),
@@ -505,20 +499,18 @@ def get_battle_history(
      .outerjoin(t2, Battle.team2_id == t2.id)\
      .outerjoin(turn_counts, Battle.id == turn_counts.c.battle_id)\
      .filter(Battle.user_id == current_user.id)\
+     .filter(Battle.winner.isnot(None)) \
      .order_by(Battle.created_at.desc()).all()
 
     result = []
     for row in battles_data:
         b = row.Battle
-        
-        winner_status = b.winner if b.winner else "INCOMPLETE"
-
         result.append({
             "id":         str(b.id),
             "created_at": b.created_at.isoformat(),
             "team1_name": row.team1_name or "Unknown",
             "team2_name": row.team2_name or "Unknown",
-            "winner":     winner_status, 
+            "winner":     b.winner,
             "turns":      int(row.turns),
         })
         
