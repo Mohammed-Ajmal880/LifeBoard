@@ -477,11 +477,28 @@ def _build_response(state, log, player_damage, opp_damage, fainted):
     }
 
 
-@router.get("/history", response_model=List[BattleOut])
+@router.get("/history")
 def get_battle_history(
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_current_user)
 ):
-    return db.query(Battle).filter(
+    battles = db.query(Battle).filter(
         Battle.user_id == current_user.id
     ).order_by(Battle.created_at.desc()).all()
+
+    result = []
+    for b in battles:
+        team1 = db.query(PokemonTeam).filter(PokemonTeam.id == b.team1_id).first()
+        team2 = db.query(PokemonTeam).filter(PokemonTeam.id == b.team2_id).first()
+        turns = db.query(BattleTurn).filter(
+            BattleTurn.battle_id == b.id
+        ).count()
+        result.append({
+            "id":         str(b.id),
+            "created_at": b.created_at.isoformat(),
+            "team1_name": team1.team_name if team1 else "Unknown",
+            "team2_name": team2.team_name if team2 else "Unknown",
+            "winner":     b.winner,
+            "turns":      turns,
+        })
+    return result
