@@ -82,10 +82,36 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
     }
   }
 
-  const handlePokemonSelect = (pokemon) => {
+  const handlePokemonSelect = async (pokemon) => {
     const newIdx = state.team1.findIndex(p => p.name === pokemon.name)
     setState(prev => ({ ...prev, active1: newIdx }))
     setSelectingPokemon(false)
+
+    // Synchronize manual faint replacement directly with the backend database
+    if (selectReason === 'faint') {
+      setWaiting(true)
+      try {
+        const res = await api.post(`/battles/${state.battle_id}/move`, {
+          move_name: null, // Sending null lets the backend know this is an active swap
+          active_slot: pokemon.slot,
+        })
+        const data = res.data
+        setState(prev => ({
+          ...prev,
+          team1: data.player_team,
+          team2: data.opponent_team,
+          active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
+          active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
+        }))
+        const formattedName = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
+        setLog(prev => [...prev, ...data.log, `${formattedName} was sent out!`]);
+      } catch (err) {
+        console.error("Failed to swap fainted Pokemon on backend:", err)
+      } finally {
+        setWaiting(false)
+      }
+      return
+    }
 
     // Only trigger opponent move if this was lead selection + opponent goes first
     if (selectReason === 'lead' && goesFirst === 'team2') {
@@ -114,12 +140,28 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         if (data.battle_over) {
           setBattleOver(true)
           setWinner(data.winner)
+        } else {
+          const updatedTeam1 = data.player_team
+          const activePokemon = updatedTeam1.find(p => p.name === pokemon.name) // pokemon.name is your selected lead
+          const aliveRemaining = updatedTeam1.filter(p => !p.fainted)
+
+          if (activePokemon?.fainted && aliveRemaining.length >= 1) {
+            if (aliveRemaining.length === 1) {
+              // Auto-switch to last remaining
+              const lastIdx = data.player_team.findIndex(p => p.name === aliveRemaining[0].name)
+              setState(prev => ({ ...prev, active1: lastIdx }))
+              const lastPokeName = aliveRemaining[0].name.charAt(0).toUpperCase() + aliveRemaining[0].name.slice(1);
+              setLog(prev => [...prev, `🟢 ${lastPokeName} was sent out!`]);
+            } else {
+              // Open select modal immediately
+              setSelectReason('faint')
+              setSelectingPokemon(true)
+            }
+          }
         }
       }).catch(err => console.error(err))
         .finally(() => setWaiting(false))
     }
-    // For faint reason — just update local state, no API call
-    // The active_slot will be sent with the next real move
   }
 
   return (
@@ -193,7 +235,12 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           <div style={{
             position: 'relative',
             height: '320px',
-            background: 'radial-gradient(ellipse at 30% 60%, rgba(124,58,237,0.12) 0%, transparent 60%), radial-gradient(ellipse at 70% 40%, rgba(59,130,246,0.08) 0%, transparent 60%)',
+            // 💡 Cleanly add the background imagery asset here:
+            backgroundImage: "url('/assets/Pokemon_bg2.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            imageRendering: 'pixelated', // Keep it sharp if you're using classic retro pixel-art scenery!
             overflow: 'hidden',
           }}>
 
@@ -225,8 +272,8 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
                 position: 'absolute',
                 right: '120px',
                 top: '80px',
-                width: '120px',
-                height: '120px',
+                width: '160px',
+                height: '160px',
                 imageRendering: 'pixelated',
                 filter: opponentPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 12px rgba(59,130,246,0.4))',
                 transition: 'filter 0.5s ease',
@@ -241,12 +288,12 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
                 position: 'absolute',
                 left: '60px',
                 bottom: '80px',
-                width: '160px',
-                height: '160px',
+                width: '200px',
+                height: '200px',
                 imageRendering: 'pixelated',
                 filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))',
                 transition: 'filter 0.5s ease',
-                transform:      'scaleX(1)',
+                transform: 'scaleX(1)',
               }}
             />
 
