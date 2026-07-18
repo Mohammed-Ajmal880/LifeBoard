@@ -255,7 +255,6 @@ def submit_move(
 
     # If this is just a switch with no move, return updated state
     if data.move_name is None:
-        state["turn_number"] += 1
         return _build_response(state, ["Switched Pokémon!"], 0, 0, [])
 
     log         = []
@@ -268,7 +267,7 @@ def submit_move(
     attacker    = state["team1"][active1_idx] # Player
     defender    = state["team2"][active2_idx] # Opponent AI
 
-    # ── 1. NEW: ISOLATED OPPONENT OPENING ATTACK HANDLER ──
+    # Opponent attacks first
     if getattr(data, "submitted_by", "player") == "opponent":
         opp_damage = calculate_damage(
             data.move_power or 40, data.move_type,
@@ -286,7 +285,7 @@ def submit_move(
             fainted.append(attacker["name"])
             log.append(f"{attacker['name'].capitalize()} fainted!")
 
-            # 💡 Look for any remaining living Pokémon to determine if the game is over
+            # Look for any remaining living Pokémon to determine if the game is over
             next1 = next((i for i, p in enumerate(state["team1"]) if not p["fainted"]), None)
             if next1 is None:
                 state["battle_over"] = True
@@ -298,7 +297,6 @@ def submit_move(
         state["turn_number"] += 1
 
         if data.move_name is not None:
-            # Save isolated opponent turn record
             turn = BattleTurn(
                 battle_id      = battle_id,
                 turn_number    = state["turn_number"],
@@ -314,7 +312,7 @@ def submit_move(
 
         return _build_response(state, log, 0, opp_damage, fainted)
 
-    # ── 2. STANDARD SIMULTANEOUS LOGIC ──
+    # 2. Standard logic 
     base_first = state.get("goes_first", "team1")
     
     if base_first == "team2":
@@ -326,7 +324,7 @@ def submit_move(
         goes_first = "team1" if state["turn_number"] % 2 != 0 else "team2"
 
     if goes_first == "team1":
-        # ── PLAYER ATTACKS FIRST ──
+        # ── Player attacks first ──
         player_damage = calculate_damage(
             data.move_power or 40, data.move_type,
             attacker["attack"], defender["defense"], defender["type"],
@@ -381,7 +379,7 @@ def submit_move(
                 return _build_response(state, log, player_damage, opp_damage, fainted)
 
     else:
-        # ── STANDARD PLAYER ATTACKS SECOND ROUNDS ──
+        # Player attacks second rounds 
         opp_moves = [m for m in defender["moves"] if (m.get("power") or 0) > 0] or defender["moves"]
         opp_move      = max(opp_moves, key=lambda m: m.get("power") or 0)
         opp_damage    = calculate_damage(
