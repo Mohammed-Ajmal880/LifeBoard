@@ -135,7 +135,6 @@ async def fetch_pokemon_data(pokedex_number: int) -> dict:
         }
 
 # In-memory battle state store
-# In production this would be Redis but for our scale this is fine
 battle_states = {}
 
 @router.post("/start")
@@ -182,6 +181,15 @@ async def start_battle(
         *[fetch_pokemon_data(m.pokedex_number) for m in team2_members]
     )
 
+    p1_lead = team1_data[0]["name"].capitalize()
+    p2_lead = team2_data[0]["name"].capitalize()
+
+    initial_log = [
+        f"⚔️ Battle started between {team1.team_name} and {team2.team_name}!",
+        f"Go! {p1_lead}!",
+        f"{team2.team_name} sent out {p2_lead}!"
+    ]
+
     # Build battle state
     def build_roster(members, poke_data):
         return [
@@ -224,6 +232,7 @@ async def start_battle(
         "goes_first":         data.goes_first,
         "team1_name":         team1.team_name,
         "team2_name":         team2.team_name,
+        "log": initial_log,
     }
 
     return battle_states[str(battle.id)]
@@ -255,7 +264,19 @@ def submit_move(
 
     # If this is just a switch with no move, return updated state
     if data.move_name is None:
-        return _build_response(state, ["Switched Pokémon!"], 0, 0, [])
+        # Find out who was just sent out
+        chosen_poke = state["team1"][state["active1"]]
+        poke_name = chosen_poke["name"].capitalize()
+        
+        # Count how many living teammates are left on your bench
+        alive_count = len([p for p in state["team1"] if not p["fainted"]])
+        
+        if alive_count == 1:
+            switch_log = [f"🔴 {state['team1_name']} is down to their last Pokémon! Go, {poke_name}!"]
+        else:
+            switch_log = [f"Go! {poke_name}!"]
+            
+        return _build_response(state, switch_log, 0, 0, [])
 
     log         = []
     fainted     = []
@@ -350,7 +371,12 @@ def submit_move(
                 return _build_response(state, log, player_damage, 0, fainted)
             state["active2"] = next2
             defender         = state["team2"][next2]
-            log.append(f"{defender['name'].capitalize()} was sent out!")
+
+            opp_alive_count = len([p for p in state["team2"] if not p["fainted"]])
+            if opp_alive_count == 1:
+                log.append(f"{state['team2_name']} sends out their last Pokémon: {defender['name'].capitalize()}!")
+            else:
+                log.append(f"{state['team2_name']} sent out {defender['name'].capitalize()}!")
 
         # Opponent AI counter-attacks second
         opp_moves = [m for m in defender["moves"] if (m.get("power") or 0) > 0] or defender["moves"]
@@ -379,7 +405,7 @@ def submit_move(
                 return _build_response(state, log, player_damage, opp_damage, fainted)
 
     else:
-        # Player attacks second rounds 
+        # Player attacks second  
         opp_moves = [m for m in defender["moves"] if (m.get("power") or 0) > 0] or defender["moves"]
         opp_move      = max(opp_moves, key=lambda m: m.get("power") or 0)
         opp_damage    = calculate_damage(
@@ -430,7 +456,13 @@ def submit_move(
                     _end_battle(battle_id, "team1", db)
                     return _build_response(state, log, player_damage, opp_damage, fainted)
                 state["active2"] = next2
-                log.append(f"{state['team2'][next2]['name'].capitalize()} was sent out!")
+                
+                # Count how many living opponent Pokémon are left
+                opp_alive_count = len([p for p in state["team2"] if not p["fainted"]])
+                if opp_alive_count == 1:
+                    log.append(f"{state['team2_name']} sends out their last Pokémon: {defender['name'].capitalize()}!")
+                else:
+                    log.append(f"{state['team2_name']} sent out {defender['name'].capitalize()}!")
 
     state["turn_number"] += 1
 
