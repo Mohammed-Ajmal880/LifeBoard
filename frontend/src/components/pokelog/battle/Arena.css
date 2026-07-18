@@ -30,7 +30,7 @@
 .arena-platform-opponent {
   position: absolute;
   right: 80px;
-  top: 160px;
+  top: 190px;
   width: 220px;
   height: 45px;
   background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.6) 0%, rgba(59, 130, 246, 0) 70%);
@@ -43,7 +43,7 @@
 .arena-platform-player {
   position: absolute;
   left: 50px;
-  bottom: 25px;
+  bottom: 95px;
   width: 260px;
   height: 55px;
   background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.6) 0%, rgba(124, 58, 237, 0) 70%);

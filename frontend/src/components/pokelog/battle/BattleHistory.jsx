@@ -53,7 +53,7 @@ function BattleHistory() {
                         Battle history
                     </h2>
                     <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        Every finished battle is recorded here.[cite: 2]
+                        Every finished battle is recorded here.
                     </p>
                 </div>
 
