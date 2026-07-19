@@ -280,11 +280,13 @@ def submit_move(
     p1 = state["team1"][state["active1"]]
     p2 = state["team2"][state["active2"]]
 
-    # Prevent submitting moves if your active Pokémon is already fainted
+    # 💡 FIX: GRACEFUL FAINT GUARD (Prevents UI Freezing/Pausing)
+    # Returns a safe 200 OK response with an explicit instruction instead of a hard 400 error
     if p1["fainted"]:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"{p1['name'].capitalize()} is fainted! You must send out a replacement."
+        return _build_response(
+            state, 
+            [f"❌ {p1['name'].capitalize()} is fainted! Please select a healthy Pokémon from your bench below to continue."], 
+            0, 0, []
         )
 
     # ── 2. INITIALIZE ROUND UTILITIES ──
@@ -379,7 +381,7 @@ def submit_move(
         current_turn = state.get("turn_number", 1)
 
         if current_turn == 1:
-            # 💡 TURN 1: Initial automatic kickoff request -> ONLY Opponent attacks
+            # TURN 1: Initial automatic kickoff request -> ONLY Opponent attacks
             opp_moves = [m for m in p2["moves"] if (m.get("power") or 0) > 0] or p2["moves"]
             best_opp_move = max(opp_moves, key=lambda x: x.get("power", 0)) if opp_moves else {"name": "tackle", "power": 40, "type": "normal"}
             
@@ -404,7 +406,7 @@ def submit_move(
             return _build_response(state, log, 0, opp_damage, fainted)
 
         elif current_turn == 2:
-            # 💡 TURN 2: Player's manual response click -> ONLY Player attacks
+            # TURN 2: Player's manual response click -> ONLY Player attacks
             m_type = data.move_type or "normal"
             player_damage = calculate_damage(
                 data.move_power or 40, m_type.lower(),
@@ -428,7 +430,7 @@ def submit_move(
             return _build_response(state, log, player_damage, 0, fainted)
 
         else:
-            # 💡 TURN 3+: Standard Round Loop -> Opponent attacks first, Player responds second
+            # TURN 3+: Standard Round Loop -> Opponent attacks first, Player responds second
             # 1. Opponent Attacks
             opp_moves = [m for m in p2["moves"] if (m.get("power") or 0) > 0] or p2["moves"]
             best_opp_move = max(opp_moves, key=lambda x: x.get("power", 0)) if opp_moves else {"name": "tackle", "power": 40, "type": "normal"}
