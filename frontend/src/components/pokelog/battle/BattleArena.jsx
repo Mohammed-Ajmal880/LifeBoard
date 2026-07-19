@@ -145,14 +145,11 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           const aliveRemaining = updatedTeam1.filter(p => !p.fainted)
 
           if (activePokemon?.fainted && aliveRemaining.length >= 1) {
+            setSelectReason('faint')
             if (aliveRemaining.length === 1) {
-              const lastIdx = data.player_team.findIndex(p => p.name === aliveRemaining[0].name)
-              setState(prev => ({ ...prev, active1: lastIdx }))
-              const lastPokeName = aliveRemaining[0].name.charAt(0).toUpperCase() + aliveRemaining[0].name.slice(1);
-              setLog(prev => [...prev, `🟢 ${lastPokeName} was sent out!`]);
+              handlePokemonSelect(aliveRemaining[0])
             } else {
               setSelectReason('faint')
-              setSelectingPokemon(true)
             }
           }
         }
