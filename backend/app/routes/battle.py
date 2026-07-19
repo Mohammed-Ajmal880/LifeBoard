@@ -245,7 +245,6 @@ def submit_move(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Retrieve the state from memory
     state = battle_states.get(str(battle_id))
     if not state:
         raise HTTPException(status_code=404, detail="Battle state not found or expired")
@@ -263,7 +262,6 @@ def submit_move(
         if new_idx is not None:
             state["active1"] = new_idx
 
-    # If this is a standalone switch request (no move executed), return early
     if data.move_name is None:
         chosen_poke = state["team1"][state["active1"]]
         poke_name = chosen_poke["name"].capitalize()
@@ -276,8 +274,16 @@ def submit_move(
             
         return _build_response(state, switch_log, 0, 0, [])
 
+    # 💡 FIX 1: PLAYER GUARD LAYER
+    # Prevent submitting moves if the current active player Pokémon is fainted
+    p1 = state["team1"][state["active1"]]
+    if p1["fainted"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"{p1['name'].capitalize()} is fainted! You must send out a replacement Pokémon."
+        )
+
     # ── 2. INITIALIZE STANDARD BATTLE ROUND ──
-    # Lock initiative strictly to the baseline setting to prevent double-turns
     base_first = state.get("goes_first", "team1")
     goes_first = base_first
 
@@ -286,7 +292,6 @@ def submit_move(
     player_damage = 0
     opp_damage = 0
 
-    p1 = state["team1"][state["active1"]]
     p2 = state["team2"][state["active2"]]
 
     # Helper function to append effectiveness status text to the same line
@@ -316,6 +321,15 @@ def submit_move(
             log.append(f"🏆 {state['team2_name']} has won the battle!")
             _end_battle(battle_id, state["team2_name"], db)
 
+    # 💡 FIX 2: AI AUTO-SWITCH HELPER
+    # Automatically finds and deploys the opponent's next living team member
+    def auto_switch_opponent():
+        next_opp_idx = next((i for i, p in enumerate(state["team2"]) if not p["fainted"]), None)
+        if next_opp_idx is not None:
+            state["active2"] = next_opp_idx
+            next_opp = state["team2"][next_opp_idx]
+            log.append(f"➡️ {state['team2_name']} sent out {next_opp['name'].capitalize()}!")
+
     # ── 3. DUAL ACTION EXECUTION SEQUENCES ──
     if goes_first == "team1":
         # ─────────────── PLAYER ATTACKS FIRST ───────────────
@@ -336,6 +350,9 @@ def submit_move(
             log.append(f"🔴 Enemy {p2['name'].capitalize()} fainted!")
             
             check_battle_over()
+            if not state["battle_over"]:
+                auto_switch_opponent()  # Switch enemy automatically before returning response
+                
             state["turn_number"] += 1
             return _build_response(state, log, player_damage, 0, fainted)
 
@@ -404,7 +421,10 @@ def submit_move(
             p2["fainted"] = True
             fainted.append(p2["name"])
             log.append(f"🔴 Enemy {p2['name'].capitalize()} fainted!")
+            
             check_battle_over()
+            if not state["battle_over"]:
+                auto_switch_opponent()  # Switch enemy automatically before returning response
 
         state["turn_number"] += 1
         return _build_response(state, log, player_damage, opp_damage, fainted)
