@@ -1,3 +1,5 @@
+from datetime import timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func
@@ -553,7 +555,7 @@ def get_battle_history(
         b = row.Battle
         result.append({
             "id":         str(b.id),
-            "created_at": b.created_at.isoformat(),
+            "created_at": b.created_at.replace(tzinfo=timezone.utc).isoformat() if b.created_at else None,
             "team1_name": row.team1_name or "Unknown",
             "team2_name": row.team2_name or "Unknown",
             "winner":     b.winner,
