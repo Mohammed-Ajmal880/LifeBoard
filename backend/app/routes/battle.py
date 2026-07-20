@@ -237,6 +237,30 @@ async def start_battle(
 
     return battle_states[str(battle.id)]
 
+def _log_turn_to_db(
+    battle_id: UUID,
+    turn_number: int,
+    attacker_slot: int,
+    move_name: str,
+    move_power: int,
+    damage_dealt: int,
+    target_slot: int,
+    is_player: bool,
+    db: Session
+):
+    turn_record = BattleTurn(
+        battle_id=battle_id,
+        turn_number=turn_number,
+        attacker_slot=attacker_slot,
+        move_name=move_name,
+        move_power=move_power,
+        damage_dealt=damage_dealt,
+        target_slot=target_slot,
+        is_player_turn="true" if is_player else "false"
+    )
+    db.add(turn_record)
+    db.commit()
+
 
 @router.post("/{battle_id}/move")
 def submit_move(
@@ -245,13 +269,9 @@ def submit_move(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Retrieve the state from memory
     state = battle_states.get(str(battle_id))
     if not state:
         raise HTTPException(status_code=404, detail="Battle state not found or expired")
-
-    if state["battle_over"]:
-        return _build_response(state, ["The battle has already ended!"], 0, 0, [])
 
     # ── 1. FAINT / DEPLOYMENT SYNC LAYER ──
     if data.active_slot is not None:
@@ -263,7 +283,6 @@ def submit_move(
         if new_idx is not None:
             state["active1"] = new_idx
 
-    # If this is a standalone switch request (no move executed), return early
     if data.move_name is None:
         chosen_poke = state["team1"][state["active1"]]
         poke_name = chosen_poke["name"].capitalize()
@@ -276,12 +295,9 @@ def submit_move(
             
         return _build_response(state, switch_log, 0, 0, [])
 
-    # Fetch fresh combatant references
     p1 = state["team1"][state["active1"]]
     p2 = state["team2"][state["active2"]]
 
-    # 💡 FIX: GRACEFUL FAINT GUARD (Prevents UI Freezing/Pausing)
-    # Returns a safe 200 OK response with an explicit instruction instead of a hard 400 error
     if p1["fainted"]:
         return _build_response(
             state, 
@@ -314,12 +330,10 @@ def submit_move(
             state["battle_over"] = True
             state["winner"] = "team1"
             log.append(f"🏆 {state['team1_name']} has won the battle!")
-            _end_battle(battle_id, "team1", db)
         elif not team1_alive:
             state["battle_over"] = True
             state["winner"] = "team2"
             log.append(f"🏆 {state['team2_name']} has won the battle!")
-            _end_battle(battle_id, "team2", db)
 
     def auto_switch_opponent():
         next_opp_idx = next((i for i, p in enumerate(state["team2"]) if not p["fainted"]), None)
@@ -337,6 +351,7 @@ def submit_move(
             p1["attack"], p2["defense"], p2["type"].lower()
         )
         p2["current_hp"] = max(0, p2["current_hp"] - player_damage)
+        _log_turn_to_db(battle_id, state["turn_number"], p1["slot"], data.move_name, data.move_power, player_damage, p2["slot"], True, db)
         
         action_msg = f"⚔️ {p1['name'].capitalize()} used {data.move_name}! Dealt {player_damage} damage."
         action_msg = append_effectiveness_text(action_msg, m_type, p2["type"])
@@ -349,6 +364,12 @@ def submit_move(
             check_battle_over()
             if not state["battle_over"]:
                 auto_switch_opponent()
+            
+            # Check victory here
+            if state["battle_over"]:
+                _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                return _build_response(state, log, player_damage, 0, fainted)
+                
             state["turn_number"] += 1
             return _build_response(state, log, player_damage, 0, fainted)
 
@@ -362,6 +383,7 @@ def submit_move(
             p2["attack"], p1["defense"], p1["type"].lower()
         )
         p1["current_hp"] = max(0, p1["current_hp"] - opp_damage)
+        _log_turn_to_db(battle_id, state["turn_number"], p2["slot"], best_opp_move["name"], best_opp_move.get("power"), opp_damage, p1["slot"], False, db)
         
         opp_msg = f"💥 Enemy {p2['name'].capitalize()} used {best_opp_move['name']}! Dealt {opp_damage} damage."
         opp_msg = append_effectiveness_text(opp_msg, opp_move_type, p1["type"])
@@ -373,15 +395,19 @@ def submit_move(
             log.append(f"🔴 Your {p1['name'].capitalize()} fainted!")
             check_battle_over()
 
+        if state["battle_over"]:
+            _end_battle(battle_id, state["winner"], state["turn_number"], db)
+            return _build_response(state, log, player_damage, opp_damage, fainted)
+
         state["turn_number"] += 1
         return _build_response(state, log, player_damage, opp_damage, fainted)
 
     else:
-        # ─────────────── PARTITIONED DUAL-ACTION ROUND (OPPONENT FIRST) ───────────────
+        # ─────────────── COMBO-PACK PIPELINE (OPPONENT INIT) ───────────────
         current_turn = state.get("turn_number", 1)
 
+        # 🚀 STEP 1: INITIAL KICKOFF (Only happens once at the absolute start)
         if current_turn == 1:
-            # TURN 1: Initial automatic kickoff request -> ONLY Opponent attacks
             opp_moves = [m for m in p2["moves"] if (m.get("power") or 0) > 0] or p2["moves"]
             best_opp_move = max(opp_moves, key=lambda x: x.get("power", 0)) if opp_moves else {"name": "tackle", "power": 40, "type": "normal"}
             
@@ -391,8 +417,9 @@ def submit_move(
                 p2["attack"], p1["defense"], p1["type"].lower()
             )
             p1["current_hp"] = max(0, p1["current_hp"] - opp_damage)
+            _log_turn_to_db(battle_id, 1, p2["slot"], best_opp_move["name"], best_opp_move.get("power"), opp_damage, p1["slot"], False, db)
             
-            opp_msg = f"💥 Enemy {p2['name'].capitalize()} used {best_opp_move['name']}! Dealt {opp_damage} damage."
+            opp_msg = f"💥 [Turn 1] Enemy {p2['name'].capitalize()} used {best_opp_move['name']}! Dealt {opp_damage} damage."
             opp_msg = append_effectiveness_text(opp_msg, opp_move_type, p1["type"])
             log.append(opp_msg)
 
@@ -402,19 +429,25 @@ def submit_move(
                 log.append(f"🔴 Your {p1['name'].capitalize()} fainted!")
                 check_battle_over()
 
-            state["turn_number"] += 1
+            if state["battle_over"]:
+                _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                return _build_response(state, log, 0, opp_damage, fainted)
+
+            state["turn_number"] = 2
             return _build_response(state, log, 0, opp_damage, fainted)
 
-        elif current_turn == 2:
-            # TURN 2: Player's manual response click -> ONLY Player attacks
+        # 🔄 STEPS 2 & 3: THE REPEATING COMBAT CYCLE (Turn 2+)
+        else:
+            # Action A: Player Attack
             m_type = data.move_type or "normal"
             player_damage = calculate_damage(
                 data.move_power or 40, m_type.lower(),
                 p1["attack"], p2["defense"], p2["type"].lower()
             )
             p2["current_hp"] = max(0, p2["current_hp"] - player_damage)
+            _log_turn_to_db(battle_id, state["turn_number"], p1["slot"], data.move_name, data.move_power, player_damage, p2["slot"], True, db)
             
-            action_msg = f"⚔️ {p1['name'].capitalize()} used {data.move_name}! Dealt {player_damage} damage."
+            action_msg = f"⚔️ Your {p1['name'].capitalize()} used {data.move_name}! Dealt {player_damage} damage."
             action_msg = append_effectiveness_text(action_msg, m_type, p2["type"])
             log.append(action_msg)
 
@@ -425,93 +458,42 @@ def submit_move(
                 check_battle_over()
                 if not state["battle_over"]:
                     auto_switch_opponent()
+                
+                if state["battle_over"]:
+                    _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                    return _build_response(state, log, player_damage, 0, fainted)
+                    
+                state["turn_number"] += 1
+                return _build_response(state, log, player_damage, 0, fainted)
+
+            # Action B: Opponent Counter-Retaliation
+            opp_moves = [m for m in p2["moves"] if (m.get("power") or 0) > 0] or p2["moves"]
+            best_opp_move = max(opp_moves, key=lambda x: x.get("power", 0)) if opp_moves else {"name": "tackle", "power": 40, "type": "normal"}
+            
+            opp_move_type = best_opp_move.get("type", "normal")
+            opp_damage = calculate_damage(
+                best_opp_move.get("power", 40), opp_move_type.lower(),
+                p2["attack"], p1["defense"], p1["type"].lower()
+            )
+            p1["current_hp"] = max(0, p1["current_hp"] - opp_damage)
+            _log_turn_to_db(battle_id, state["turn_number"], p2["slot"], best_opp_move["name"], best_opp_move.get("power"), opp_damage, p1["slot"], False, db)
+            
+            opp_msg = f"💥 Enemy {p2['name'].capitalize()} retaliated with {best_opp_move['name']}! Dealt {opp_damage} damage."
+            opp_msg = append_effectiveness_text(opp_msg, opp_move_type, p1["type"])
+            log.append(opp_msg)
+
+            if p1["current_hp"] == 0:
+                p1["fainted"] = True
+                fainted.append(p1["name"])
+                log.append(f"🔴 Your {p1['name'].capitalize()} fainted!")
+                check_battle_over()
+
+            if state["battle_over"]:
+                _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                return _build_response(state, log, player_damage, opp_damage, fainted)
 
             state["turn_number"] += 1
-            return _build_response(state, log, player_damage, 0, fainted)
-
-        else:
-            # ─────────────── COMBO-PACK PIPELINE (OPPONENT INIT) ───────────────
-            current_turn = state.get("turn_number", 1)
-
-            # 🚀 STEP 1: INITIAL KICKOFF (Only happens once at the absolute start)
-            if current_turn == 1:
-                # Calculate the initial Opponent attack
-                opp_moves = [m for m in p2["moves"] if (m.get("power") or 0) > 0] or p2["moves"]
-                best_opp_move = max(opp_moves, key=lambda x: x.get("power", 0)) if opp_moves else {"name": "tackle", "power": 40, "type": "normal"}
-                
-                opp_move_type = best_opp_move.get("type", "normal")
-                opp_damage = calculate_damage(
-                    best_opp_move.get("power", 40), opp_move_type.lower(),
-                    p2["attack"], p1["defense"], p1["type"].lower()
-                )
-                p1["current_hp"] = max(0, p1["current_hp"] - opp_damage)
-                
-                opp_msg = f"💥 [Turn 1] Enemy {p2['name'].capitalize()} used {best_opp_move['name']}! Dealt {opp_damage} damage."
-                opp_msg = append_effectiveness_text(opp_msg, opp_move_type, p1["type"])
-                log.append(opp_msg)
-
-                if p1["current_hp"] == 0:
-                    p1["fainted"] = True
-                    fainted.append(p1["name"])
-                    log.append(f"🔴 Your {p1['name'].capitalize()} fainted!")
-                    check_battle_over()
-
-                # Advance to Turn 2 so the player's next click triggers the continuous loop
-                state["turn_number"] = 2
-                return _build_response(state, log, 0, opp_damage, fainted)
-
-            # 🔄 STEPS 2 & 3: THE REPEATING COMBAT CYCLE (Turn 2+)
-            else:
-                # ---- ACTION A: Process User's Confirmed Move ----
-                m_type = data.move_type or "normal"
-                player_damage = calculate_damage(
-                    data.move_power or 40, m_type.lower(),
-                    p1["attack"], p2["defense"], p2["type"].lower()
-                )
-                p2["current_hp"] = max(0, p2["current_hp"] - player_damage)
-                
-                action_msg = f"⚔️ Your {p1['name'].capitalize()} used {data.move_name}! Dealt {player_damage} damage."
-                action_msg = append_effectiveness_text(action_msg, m_type, p2["type"])
-                log.append(action_msg)
-
-                # Check if player's attack fainted the opponent
-                if p2["current_hp"] == 0:
-                    p2["fainted"] = True
-                    fainted.append(p2["name"])
-                    log.append(f"🔴 Enemy {p2['name'].capitalize()} fainted!")
-                    check_battle_over()
-                    if not state["battle_over"]:
-                        auto_switch_opponent()
-                    
-                    # Opponent fainted, so they can't strike back this round. Return early!
-                    state["turn_number"] += 1
-                    return _build_response(state, log, player_damage, 0, fainted)
-
-                # ---- ACTION B: Pre-calculate the Opponent's Next Move Immediately ----
-                opp_moves = [m for m in p2["moves"] if (m.get("power") or 0) > 0] or p2["moves"]
-                best_opp_move = max(opp_moves, key=lambda x: x.get("power", 0)) if opp_moves else {"name": "tackle", "power": 40, "type": "normal"}
-                
-                opp_move_type = best_opp_move.get("type", "normal")
-                opp_damage = calculate_damage(
-                    best_opp_move.get("power", 40), opp_move_type.lower(),
-                    p2["attack"], p1["defense"], p1["type"].lower()
-                )
-                p1["current_hp"] = max(0, p1["current_hp"] - opp_damage)
-                
-                opp_msg = f"💥 Enemy {p2['name'].capitalize()} retaliated with {best_opp_move['name']}! Dealt {opp_damage} damage."
-                opp_msg = append_effectiveness_text(opp_msg, opp_move_type, p1["type"])
-                log.append(opp_msg)
-
-                # Check if opponent's retaliation fainted the player
-                if p1["current_hp"] == 0:
-                    p1["fainted"] = True
-                    fainted.append(p1["name"])
-                    log.append(f"🔴 Your {p1['name'].capitalize()} fainted!")
-                    check_battle_over()
-
-                # Keep shifting the state forward cleanly
-                state["turn_number"] += 1
-                return _build_response(state, log, player_damage, opp_damage, fainted)
+            return _build_response(state, log, player_damage, opp_damage, fainted)
 
 
 def _end_battle(battle_id: UUID, winner: str, db: Session):
@@ -519,6 +501,7 @@ def _end_battle(battle_id: UUID, winner: str, db: Session):
     if battle:
         battle.winner = winner
         db.commit()
+    # Clean up memory
     battle_states.pop(str(battle_id), None)
 
 
@@ -547,21 +530,22 @@ def get_battle_history(
     t1 = aliased(PokemonTeam)
     t2 = aliased(PokemonTeam)
 
+    # Calculate the max turn number for each battle record from your battle_turns table
     turn_counts = db.query(
         BattleTurn.battle_id,
-        func.count(BattleTurn.id).label("turn_count")
+        func.max(BattleTurn.turn_number).label("max_turn")
     ).group_by(BattleTurn.battle_id).subquery()
 
     battles_data = db.query(
         Battle,
         t1.team_name.label("team1_name"),
         t2.team_name.label("team2_name"),
-        func.coalesce(turn_counts.c.turn_count, 0).label("turns")
+        func.coalesce(turn_counts.c.max_turn, 0).label("turn_count")
     ).outerjoin(t1, Battle.team1_id == t1.id)\
      .outerjoin(t2, Battle.team2_id == t2.id)\
      .outerjoin(turn_counts, Battle.id == turn_counts.c.battle_id)\
      .filter(Battle.user_id == current_user.id)\
-     .filter(Battle.winner.isnot(None)) \
+     .filter(Battle.winner.isnot(None))\
      .order_by(Battle.created_at.desc()).all()
 
     result = []
@@ -573,7 +557,7 @@ def get_battle_history(
             "team1_name": row.team1_name or "Unknown",
             "team2_name": row.team2_name or "Unknown",
             "winner":     b.winner,
-            "turns":      int(row.turns),
+            "turns":      int(row.turn_count), 
         })
         
     return result
