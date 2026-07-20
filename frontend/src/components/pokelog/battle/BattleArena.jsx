@@ -7,14 +7,12 @@ import api from '../../../services/api'
 import PokemonSelectModal from './PokemonSelectModal'
 import ArenaBackground from './ArenaBackground'
 
-
-
 function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [state, setState] = useState(battleState)
   const [log, setLog] = useState([
     `${goesFirst === 'team1' ? battleState.team1_name : battleState.team2_name} moves first!`
   ])
-  const [waiting, setWaiting] = useState(goesFirst == "team2")
+  const [waiting, setWaiting] = useState(goesFirst === "team2")
   const [battleOver, setBattleOver] = useState(false)
   const [winner, setWinner] = useState(null)
   const [selectingPokemon, setSelectingPokemon] = useState(true)
@@ -23,17 +21,13 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
     battleState.team1.map(p => [p.name, { sprite: p.sprite, type: p.type }])
   )
 
-
-
   if (!open) return null
 
   const playerPokemon = state.team1[state.active1]
   const opponentPokemon = state.team2[state.active2]
 
-
-
   const handleMove = async (move) => {
-    if (waiting || battleOver) return
+    if (waiting || battleOver || playerPokemon.current_hp === 0) return
 
     setWaiting(true)
     try {
@@ -46,7 +40,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
       const data = res.data
 
       setState(prev => ({
-        ...prev,        
+        ...prev,
         team1: data.player_team,
         team2: data.opponent_team,
         active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
@@ -59,16 +53,11 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         setBattleOver(true)
         setWinner(data.winner)
       } else {
-        // Check if player's active Pokémon fainted
-        const updatedTeam1 = data.player_team
-        const activePokemon = updatedTeam1.find(p => p.name === playerPokemon.name)
-        const aliveRemaining = updatedTeam1.filter(p => !p.fainted)
-
-        if (activePokemon?.fainted && aliveRemaining.length >= 1) {
-          if (aliveRemaining.length === 1) {
-            const lastIdx = data.player_team.findIndex(p => p.name === aliveRemaining[0].name)
-            setState(prev => ({ ...prev, active1: lastIdx }))
-          } else {
+        // 🛠️ BULLETPROOF GUARD: Scan server team array directly to detect a faint reliably
+        const serverActivePoke = data.player_team.find(p => p.name === playerPokemon.name)
+        if (serverActivePoke && serverActivePoke.fainted) {
+          const aliveRemaining = data.player_team.filter(p => !p.fainted)
+          if (aliveRemaining.length > 0) {
             setSelectReason('faint')
             setSelectingPokemon(true)
           }
@@ -82,44 +71,45 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   }
 
   const handlePokemonSelect = async (pokemon) => {
-    const newIdx = state.team1.findIndex(p => p.name === pokemon.name)
-    setState(prev => ({ ...prev, active1: newIdx }))
-    setSelectingPokemon(false)
+    const newIdx = state.team1.findIndex(p => p.name === pokemon.name);
+    setState(prev => ({ ...prev, active1: newIdx }));
+    setSelectingPokemon(false);
 
     // Synchronize manual faint replacement directly with the backend database
     if (selectReason === 'faint') {
-      setWaiting(true)
+      setWaiting(true);
       try {
         const res = await api.post(`/battles/${state.battle_id}/move`, {
           move_name: null,
           active_slot: pokemon.slot,
-        })
-        const data = res.data
+        });
+        const data = res.data;
         setState(prev => ({
           ...prev,
           team1: data.player_team,
           team2: data.opponent_team,
           active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
           active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
-        }))
+        }));
         const formattedName = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
-        setLog(prev => [...prev, ...data.log, `${formattedName} was sent out!`]);
+        setLog(prev => [...prev, ...data.log, `➡️ ${formattedName} was sent out!`]);
       } catch (err) {
-        console.error("Failed to swap fainted Pokemon on backend:", err)
+        console.error("Failed to swap fainted Pokemon on backend:", err);
       } finally {
-        setWaiting(false)
+        setWaiting(false);
       }
-      return
+      return;
     }
 
     // Only trigger opponent move if this was lead selection + opponent goes first
     if (selectReason === 'lead' && goesFirst === 'team2') {
-      setWaiting(true)
-      const opponentPoke = state.team2[state.active2]
+      setWaiting(true);
+      const opponentPoke = state.team2[state.active2];
       const bestMove = opponentPoke.moves.reduce(
         (best, m) => ((m.power || 0) > (best.power || 0) ? m : best),
         opponentPoke.moves[0]
-      )
+      );
+
       api.post(`/battles/${state.battle_id}/move`, {
         move_name: bestMove.name,
         move_power: bestMove.power || 40,
@@ -127,36 +117,34 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         active_slot: pokemon.slot,
         submitted_by: 'opponent',
       }).then(res => {
-        const data = res.data
+        const data = res.data;
         setState(prev => ({
           ...prev,
           team1: data.player_team,
           team2: data.opponent_team,
           active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
           active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
-        }))
-        setLog(prev => [...prev, ...data.log])
-        if (data.battle_over) {
-          setBattleOver(true)
-          setWinner(data.winner)
-        } else {
-          const updatedTeam1 = data.player_team
-          const activePokemon = updatedTeam1.find(p => p.name === pokemon.name)
-          const aliveRemaining = updatedTeam1.filter(p => !p.fainted)
+        }));
+        setLog(prev => [...prev, ...data.log]);
 
-          if (activePokemon?.fainted && aliveRemaining.length >= 1) {
-            setSelectReason('faint')
-            if (aliveRemaining.length === 1) {
-              handlePokemonSelect(aliveRemaining[0])
-            } else {
-              setSelectReason('faint')
+        if (data.battle_over) {
+          setBattleOver(true);
+          setWinner(data.winner);
+        } else {
+          // 🛠️ BULLETPROOF GUARD: Verify Turn 1 lead faint via direct server team array scan
+          const serverActivePoke = data.player_team.find(p => p.name === pokemon.name);
+          if (serverActivePoke && serverActivePoke.fainted) {
+            const aliveRemaining = data.player_team.filter(p => !p.fainted);
+            if (aliveRemaining.length > 0) {
+              setSelectReason('faint');
+              setSelectingPokemon(true);
             }
           }
         }
       }).catch(err => console.error(err))
-        .finally(() => setWaiting(false))
+        .finally(() => setWaiting(false));
     }
-  }
+  };
 
   return (
     <Portal>
@@ -227,31 +215,26 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
 
           {/* Arena platform */}
           <ArenaBackground>
-            {/* Opponent HP card — top right */}
             <div style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 16px', minWidth: '220px', backdropFilter: 'blur(8px)' }}>
               <HPBar current={opponentPokemon.current_hp} max={opponentPokemon.max_hp} label="Opponent" sublabel={opponentPokemon.name.charAt(0).toUpperCase() + opponentPokemon.name.slice(1)} />
             </div>
 
-            {/* Opponent sprite */}
             <img
               src={opponentPokemon.sprite}
               alt={opponentPokemon.name}
               style={{ position: 'absolute', right: '120px', top: '80px', width: '160px', height: '160px', imageRendering: 'pixelated', filter: opponentPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 12px rgba(59,130,246,0.4))', transition: 'filter 0.5s ease' }}
             />
 
-            {/* Player sprite */}
             <img
               src={playerPokemon.back_sprite || playerPokemon.sprite}
               alt={playerPokemon.name}
               style={{ position: 'absolute', left: '60px', bottom: '80px', width: '200px', height: '200px', imageRendering: 'pixelated', filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))', transition: 'filter 0.5s ease', transform: 'scaleX(1)' }}
             />
 
-            {/* Player HP card — bottom left */}
             <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 16px', minWidth: '240px', backdropFilter: 'blur(8px)' }}>
               <HPBar current={playerPokemon.current_hp} max={playerPokemon.max_hp} label="Your Pokémon" sublabel={playerPokemon.name.charAt(0).toUpperCase() + playerPokemon.name.slice(1)} />
             </div>
 
-            {/* Turn indicator */}
             {!battleOver && (
               <div style={{ position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)', background: waiting ? 'rgba(255,255,255,0.08)' : 'rgba(124,58,237,0.3)', border: '1px solid rgba(124,58,237,0.5)', borderRadius: '20px', padding: '6px 18px', fontSize: '11px', fontWeight: 600, color: waiting ? 'var(--text-muted)' : '#fff', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'all 0.3s' }}>
                 {waiting ? '⏳ Processing...' : '⚡ Your turn'}
@@ -266,13 +249,11 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
             borderTop: '1px solid rgba(255,255,255,0.06)',
           }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '16px' }}>
-              {/* Moves */}
               <MoveSelector
                 moves={playerPokemon.moves}
                 onSelectMove={handleMove}
-                disabled={waiting || battleOver}
+                disabled={waiting || battleOver || playerPokemon.current_hp === 0}
               />
-              {/* Log */}
               <BattleLog entries={log} />
             </div>
 
