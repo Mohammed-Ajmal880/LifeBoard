@@ -367,7 +367,7 @@ def submit_move(
             
             # Check victory here
             if state["battle_over"]:
-                _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                _end_battle(battle_id, state["winner"], db)
                 return _build_response(state, log, player_damage, 0, fainted)
                 
             state["turn_number"] += 1
@@ -396,7 +396,7 @@ def submit_move(
             check_battle_over()
 
         if state["battle_over"]:
-            _end_battle(battle_id, state["winner"], state["turn_number"], db)
+            _end_battle(battle_id, state["winner"], db)
             return _build_response(state, log, player_damage, opp_damage, fainted)
 
         state["turn_number"] += 1
@@ -430,7 +430,7 @@ def submit_move(
                 check_battle_over()
 
             if state["battle_over"]:
-                _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                _end_battle(battle_id, state["winner"], db)
                 return _build_response(state, log, 0, opp_damage, fainted)
 
             state["turn_number"] = 2
@@ -460,7 +460,7 @@ def submit_move(
                     auto_switch_opponent()
                 
                 if state["battle_over"]:
-                    _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                    _end_battle(battle_id, state["winner"], db)
                     return _build_response(state, log, player_damage, 0, fainted)
                     
                 state["turn_number"] += 1
@@ -489,7 +489,7 @@ def submit_move(
                 check_battle_over()
 
             if state["battle_over"]:
-                _end_battle(battle_id, state["winner"], state["turn_number"], db)
+                _end_battle(battle_id, state["winner"], db)
                 return _build_response(state, log, player_damage, opp_damage, fainted)
 
             state["turn_number"] += 1
