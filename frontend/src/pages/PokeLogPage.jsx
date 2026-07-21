@@ -3,14 +3,15 @@ import api from '../services/api'
 import WatchLog from '../components/pokelog/WatchLog'
 import Teams from '../components/pokelog/Teams'
 import Pokedex from '../components/pokelog/Pokedex'
+import BattleHistory from '../components/pokelog/battle/BattleHistory'
 
-const TABS = ['Watch log', 'Teams', 'Pokédex']
+const TABS = ['Watch log', 'Teams', 'Pokédex', 'Battle history']
 
 function PokeLogPage() {
   const [activeTab, setActiveTab] = useState('Watch log')
-  const [entries, setEntries]     = useState([])
-  const [teams, setTeams]         = useState([])
-  const [loading, setLoading]     = useState(true)
+  const [entries, setEntries] = useState([])
+  const [teams, setTeams] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
     try {
@@ -41,17 +42,17 @@ function PokeLogPage() {
 
   return (
     <div className="page-container">
-      
+
       <div style={{
         position: 'fixed',
-        top: '40px',          
-        right: '-125px',        
+        top: '40px',
+        right: '-125px',
         width: '450px',
         height: '450px',
         background: 'radial-gradient(circle, rgba(124, 58, 237, 0.16) 0%, rgba(6, 182, 212, 0.06) 70%, transparent 100%)',
         filter: 'blur(70px)',
-        pointerEvents: 'none', 
-        zIndex: 0              
+        pointerEvents: 'none',
+        zIndex: 0
       }} />
 
       <div style={{
@@ -80,41 +81,41 @@ function PokeLogPage() {
 
       {/* Main panel */}
       <div style={{
-        background:    'rgba(255,255,255,0.03)',
-        border:        '1px solid var(--glass-border-strong)',
-        borderRadius:  '16px',
-        padding:       '20px',
-        backdropFilter:'blur(12px)',
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid var(--glass-border-strong)',
+        borderRadius: '16px',
+        padding: '20px',
+        backdropFilter: 'blur(12px)',
       }}>
 
         {/* Tabs */}
         <div style={{
-          display:      'flex',
-          gap:          '4px',
+          display: 'flex',
+          gap: '4px',
           marginBottom: '24px',
           borderBottom: '1px solid var(--glass-border)',
-          paddingBottom:'12px',
+          paddingBottom: '12px',
         }}>
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               style={{
-                padding:      '6px 18px',
+                padding: '6px 18px',
                 borderRadius: '20px',
-                fontSize:     '13px',
-                fontWeight:   500,
-                cursor:       'pointer',
-                border:       activeTab === tab
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: activeTab === tab
                   ? '1px solid var(--glass-border-purple)'
                   : '1px solid transparent',
-                background:   activeTab === tab
+                background: activeTab === tab
                   ? 'var(--accent-purple-dim)'
                   : 'none',
-                color:        activeTab === tab
+                color: activeTab === tab
                   ? '#fff'
                   : 'var(--text-muted)',
-                transition:   'all 0.2s',
+                transition: 'all 0.2s',
               }}
             >
               {tab}
@@ -143,6 +144,9 @@ function PokeLogPage() {
             )}
             {activeTab === 'Pokédex' && (
               <Pokedex />
+            )}
+            {activeTab === 'Battle history' && (
+              <BattleHistory />
             )}
           </>
         )}
