@@ -103,7 +103,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
         }));
         const formattedName = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
-        setLog(prev => [...prev, ...data.log, `➡️ ${formattedName} was sent out!`]);
+        setLog(prev => [...prev, ...data.log, `${formattedName} was sent out!`]);
       } catch (err) {
         console.error("Failed to swap fainted Pokemon on backend:", err);
       } finally {
