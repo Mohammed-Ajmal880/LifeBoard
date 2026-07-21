@@ -6,6 +6,7 @@ import Portal from '../../common/Portal'
 import api from '../../../services/api'
 import PokemonSelectModal from './PokemonSelectModal'
 import ArenaBackground from './ArenaBackground'
+import ConfirmModal from '../../common/ConfirmModal'
 
 function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [state, setState] = useState(battleState)
@@ -17,6 +18,9 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [winner, setWinner] = useState(null)
   const [selectingPokemon, setSelectingPokemon] = useState(true)
   const [selectReason, setSelectReason] = useState('lead')
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+
+
   const spriteMap = Object.fromEntries(
     battleState.team1.map(p => [p.name, { sprite: p.sprite, type: p.type }])
   )
@@ -25,6 +29,14 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
 
   const playerPokemon = state.team1[state.active1]
   const opponentPokemon = state.team2[state.active2]
+
+  const handleRequestClose = () => {
+    if (battleOver) {
+      onClose()
+    } else {
+      setShowLeaveConfirm(true)
+    }
+  }
 
   const handleMove = async (move) => {
     if (waiting || battleOver || playerPokemon.current_hp === 0) return
@@ -53,7 +65,6 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         setBattleOver(true)
         setWinner(data.winner)
       } else {
-        // 🛠️ BULLETPROOF GUARD: Scan server team array directly to detect a faint reliably
         const serverActivePoke = data.player_team.find(p => p.name === playerPokemon.name)
         if (serverActivePoke && serverActivePoke.fainted) {
           const aliveRemaining = data.player_team.filter(p => !p.fainted)
@@ -100,8 +111,6 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
       }
       return;
     }
-
-    // Only trigger opponent move if this was lead selection + opponent goes first
     if (selectReason === 'lead' && goesFirst === 'team2') {
       setWaiting(true);
       const opponentPoke = state.team2[state.active2];
@@ -131,7 +140,6 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           setBattleOver(true);
           setWinner(data.winner);
         } else {
-          // 🛠️ BULLETPROOF GUARD: Verify Turn 1 lead faint via direct server team array scan
           const serverActivePoke = data.player_team.find(p => p.name === pokemon.name);
           if (serverActivePoke && serverActivePoke.fainted) {
             const aliveRemaining = data.player_team.filter(p => !p.fainted);
@@ -148,7 +156,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !battleOver && onClose()}>
+      <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && handleRequestClose()}>
         <div style={{
           background: 'linear-gradient(160deg, rgba(20,15,50,0.99) 0%, rgba(8,8,28,0.99) 100%)',
           border: '1px solid rgba(124,58,237,0.3)',
@@ -175,7 +183,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
               </h2>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleRequestClose}
               style={{
                 width: '28px',
                 height: '28px',
@@ -322,6 +330,17 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
           sprites={spriteMap}
           reason={selectReason}
           onSelect={handlePokemonSelect}
+        />
+        {/* Mid-Battle Leave Confirmation Modal */}
+        <ConfirmModal
+          open={showLeaveConfirm}
+          onClose={() => setShowLeaveConfirm(false)}
+          onConfirm={() => {
+            setShowLeaveConfirm(false)
+            onClose()
+          }}
+          title="Leave Battle?"
+          message="Are you sure you want to forfeit and leave the battle mid-game? Your current match progress will be lost."
         />
       </div>
     </Portal>

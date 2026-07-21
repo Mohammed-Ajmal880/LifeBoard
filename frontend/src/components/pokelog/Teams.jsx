@@ -18,6 +18,8 @@ function Teams({ teams, onRefresh }) {
     const [sprites, setSprites] = useState({})
     const [confirmTeam, setConfirmTeam] = useState({ open: false, id: null })
     const [confirmMember, setConfirmMember] = useState({ open: false, teamId: null, slot: null })
+    const [reqErrorModal, setReqErrorModal] = useState({ open: false, title: '', message: '' })
+    
     const [battleSetupOpen, setBattleSetupOpen] = useState(false)
     const [whoGoesFirstOpen, setWhoGoesFirstOpen] = useState(false)
     const [arenaOpen, setArenaOpen] = useState(false)
@@ -25,9 +27,6 @@ function Teams({ teams, onRefresh }) {
     const [battleState, setBattleState] = useState(null)
     const [goesFirst, setGoesFirst] = useState('team1')
     const [loadingBattle, setLoadingBattle] = useState(false)
-
-    const eligibleTeams = teams.filter(t => (t.members?.length || 0) >= 3)
-    const canBattle = eligibleTeams.length >= 2
 
     // Fetch sprite for a team member
     const fetchSprite = async (pokedexNumber) => {
@@ -94,21 +93,14 @@ function Teams({ teams, onRefresh }) {
 
     const handleAddMember = async (payload) => {
         try {
-            // 1. Look up the specific team we are updating
             const currentTeam = teams.find(t => t.id === memberModal.teamId)
-
-            // 2. Check if a Pokémon is already occupying the target slot number
             const slotIsOccupied = currentTeam?.members?.some(m => m.slot === memberModal.slot)
 
-            // 3. If someone is already there, clear them out of the database first
             if (slotIsOccupied) {
                 await api.delete(`/pokemon_team/${memberModal.teamId}/members/${memberModal.slot}`)
             }
 
-            // 4. Now that the slot is guaranteed empty, send the standard POST request
             await api.post(`/pokemon_team/${memberModal.teamId}/members`, payload)
-
-            // 5. Clean up states and close the modal selection screen
             setMemberModal({ open: false, teamId: null, slot: null })
             onRefresh()
         } catch (err) {
@@ -131,6 +123,30 @@ function Teams({ teams, onRefresh }) {
 
     const handleReplaceSlot = (teamId, slot) => {
         setMemberModal({ open: true, teamId, slot })
+    }
+
+    // Battle Requirements Trigger
+    const handleBattleClick = () => {
+        if (teams.length < 2) {
+            setReqErrorModal({
+                open: true,
+                title: "Battle Requirements Needed",
+                message: "You need at least 2 teams created to enter the Battle Arena. Create another team to get started!"
+            })
+            return
+        }
+
+        const eligibleTeams = teams.filter(t => (t.members?.length || 0) >= 3)
+        if (eligibleTeams.length < 2) {
+            setReqErrorModal({
+                open: true,
+                title: "Incomplete Teams",
+                message: "At least 2 of your teams must have 3 or more Pokémon members each before you can battle."
+            })
+            return
+        }
+
+        setBattleSetupOpen(true)
     }
 
     const handleStartBattle = (team1Id, team2Id) => {
@@ -174,17 +190,40 @@ function Teams({ teams, onRefresh }) {
                         Create named teams with up to 6 Pokémon slots each.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    {canBattle && (
-                        <button
-                            className="btn-ghost"
-                            onClick={() => setBattleSetupOpen(true)}
-                            disabled={loadingBattle}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                            {loadingBattle ? '⏳ Loading...' : '⚔ Battle'}
-                        </button>
-                    )}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    {/* Battle Button */}
+                    <button
+                        onClick={handleBattleClick}
+                        disabled={loadingBattle}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                            color: '#ffffff',
+                            border: '1px solid rgba(255, 255, 255, 0.25)',
+                            borderRadius: 'var(--radius)',
+                            padding: '5px 16px',
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            boxShadow: '0 0 20px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)',
+                            transition: 'all 0.25s ease',
+                            letterSpacing: '0.03em'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'
+                            e.currentTarget.style.boxShadow = '0 0 28px rgba(236, 72, 153, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                            e.currentTarget.style.boxShadow = '0 0 20px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)'
+                        }}
+                    >
+                        <span style={{ fontSize: '15px', filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.8))' }}>⚔</span>
+                        {loadingBattle ? 'Loading...' : 'Battle Arena'}
+                    </button>
+
                     <button className="btn-gradient" onClick={() => setAddingTeam(true)}>
                         + New team
                     </button>
@@ -288,7 +327,6 @@ function Teams({ teams, onRefresh }) {
                                 const borderCol = spriteData ? (TYPE_BORDER_COLOURS[spriteData.type] || 'var(--glass-border)') : 'var(--glass-border)'
 
                                 return member ? (
-                                    // Filled slot
                                     <div key={slot} style={{
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -301,7 +339,6 @@ function Teams({ teams, onRefresh }) {
                                         transition: 'border-color 0.2s',
                                         boxShadow: `0 0 8px ${borderCol}40`,
                                     }}>
-                                        {/* Remove button */}
                                         <button
                                             onClick={() => handleRemoveMember(team.id, slot)}
                                             style={{
@@ -322,7 +359,6 @@ function Teams({ teams, onRefresh }) {
                                             title="Remove"
                                         >✕</button>
 
-                                        {/* Replace on click */}
                                         <div
                                             onClick={() => handleReplaceSlot(team.id, slot)}
                                             style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
@@ -360,7 +396,6 @@ function Teams({ teams, onRefresh }) {
                                         </div>
                                     </div>
                                 ) : (
-                                    // Empty slot
                                     <div
                                         key={slot}
                                         onClick={() => setMemberModal({ open: true, teamId: team.id, slot })}
@@ -404,6 +439,7 @@ function Teams({ teams, onRefresh }) {
                 onSave={handleAddMember}
                 slot={memberModal.slot}
             />
+
             <ConfirmModal
                 open={confirmTeam.open}
                 onClose={() => setConfirmTeam({ open: false, id: null })}
@@ -418,6 +454,15 @@ function Teams({ teams, onRefresh }) {
                 onConfirm={confirmRemoveMember}
                 title="Remove Pokémon?"
                 message="This Pokémon will be removed from the slot. You can add another one later."
+            />
+
+            {/* Battle Requirements Warning Modal */}
+            <ConfirmModal
+                open={reqErrorModal.open}
+                onClose={() => setReqErrorModal({ open: false, title: '', message: '' })}
+                onConfirm={() => setReqErrorModal({ open: false, title: '', message: '' })}
+                title={reqErrorModal.title}
+                message={reqErrorModal.message}
             />
 
             {/* Battle modals */}
