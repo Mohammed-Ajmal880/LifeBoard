@@ -112,27 +112,44 @@ async def fetch_pokemon_data(pokedex_number: int) -> dict:
     async with httpx.AsyncClient() as client:
         res  = await client.get(f"https://pokeapi.co/api/v2/pokemon/{pokedex_number}")
         data = res.json()
-        moves_raw = data.get("moves", [])[:4]
-        moves = []
-        for m in moves_raw:
-            move_name = m["move"]["name"]
-            move_res  = await client.get(f"https://pokeapi.co/api/v2/move/{move_name}")
-            move_data = move_res.json()
-            moves.append({
-                "name":   move_name,
-                "power":  move_data.get("power") or 40,
-                "type":   move_data["type"]["name"],
-            })
-        stats     = {s["stat"]["name"]: s["base_stat"] for s in data["stats"]}
+        
         poke_type = data["types"][0]["type"]["name"]
+        stats     = {s["stat"]["name"]: s["base_stat"] for s in data["stats"]}
+        
+        all_moves = data.get("moves", [])
+        
+        # 1. Pick a random pool of candidate moves instead of just the first 4
+        candidate_moves = random.sample(all_moves, min(12, len(all_moves))) if all_moves else []
+
+        # Helper function to fetch individual move data
+        async def fetch_move_details(m):
+            move_name = m["move"]["name"]
+            m_res = await client.get(f"https://pokeapi.co/api/v2/move/{move_name}")
+            m_data = m_res.json()
+            return {
+                "name":  move_name,
+                "power": m_data.get("power") or 40,
+                "type":  m_data["type"]["name"],
+            }
+
+        # 2. Fetch move details concurrently in parallel (Lightning Fast!)
+        fetched_moves = await asyncio.gather(*[fetch_move_details(m) for m in candidate_moves])
+
+        # 3. Prioritize STAB (moves matching the Pokemon's primary type)
+        stab_moves  = [m for m in fetched_moves if m["type"] == poke_type]
+        other_moves = [m for m in fetched_moves if m["type"] != poke_type]
+
+        # Combine matching type moves first, then fill remaining slots up to 4
+        final_moves = (stab_moves + other_moves)[:4]
+
         return {
-            "name":    data["name"],
-            "type":    poke_type,
-            "hp":      stats.get("hp", 45),
-            "attack":  stats.get("attack", 45),
-            "defense": stats.get("defense", 45),
-            "moves":   moves,
-            "sprite":  data["sprites"]["front_default"],
+            "name":        data["name"],
+            "type":        poke_type,
+            "hp":          stats.get("hp", 45),
+            "attack":      stats.get("attack", 45),
+            "defense":     stats.get("defense", 45),
+            "moves":       final_moves,
+            "sprite":      data["sprites"]["front_default"],
             "back_sprite": data["sprites"]["back_default"],
         }
 
