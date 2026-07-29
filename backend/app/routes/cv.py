@@ -1,6 +1,6 @@
 import os
 import shutil
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth import get_current_user
@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.cv_version import CVVersion
 from app.schemas.cv import CVVersionOut
 from typing import List
-import uuid
+from uuid import UUID, uuid4
 
 router = APIRouter(prefix="/cvs", tags=["CV Versions"])
 
@@ -29,7 +29,7 @@ def upload_cv(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    unique_filename = f"{uuid4()}_{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
     with open(file_path, "wb") as buffer:
@@ -56,6 +56,33 @@ def get_cvs(
     ):
     return db.query(CVVersion).filter(CVVersion.user_id == current_user.id).all()
 
+@router.patch("/{cv_id}", response_model=CVVersionOut)
+def update_cv(
+    cv_id: UUID,
+    label: str = Form(None),
+    type: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    cv = db.query(CVVersion).filter(
+        CVVersion.id == cv_id,
+        CVVersion.user_id == current_user.id
+    ).first()
+
+    if not cv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="CV not found"
+        )
+
+    if label is not None:
+        cv.label = label
+    if type is not None:
+        cv.type = type
+
+    db.commit()
+    db.refresh(cv)
+    return cv
 
 @router.patch("/{cv_id}", response_model=CVVersionOut)
 def update_cv(
@@ -87,7 +114,7 @@ def update_cv(
 
 @router.delete("/{cv_id}")
 def delete_cv(
-    cv_id: uuid.UUID,
+    cv_id: UUID,
     db: Session = Depends(get_db),
     current_user: Session = Depends(get_current_user)
 ):

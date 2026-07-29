@@ -5,3 +5,4 @@ from app.models.mc_session import MCSession
 from app.models.mc_goal import MCGoal
 from app.models.pokemon_watchlog import PokemonWatchlog
 from app.models.pokemon_team import PokemonTeam, TeamMember
+from app.models.battle import Battle, BattleTurn
