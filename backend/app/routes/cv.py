@@ -86,7 +86,7 @@ def update_cv(
 
 @router.patch("/{cv_id}", response_model=CVVersionOut)
 def update_cv(
-    cv_id: uuid.UUID,
+    cv_id: UUID,
     label: str = Form(None),
     type: str = Form(None),
     db: Session = Depends(get_db),
