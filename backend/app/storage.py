@@ -16,7 +16,7 @@ def upload_cv(file_bytes: bytes, file_name: str, content_type: str = "applicatio
 
     path = f"{file_name}"
 
-    supabase.storage_from(BUCKET).upload(
+    supabase.storage.from_(BUCKET).upload(
         path,
         file_bytes,
         {"content-type": content_type, "upsert": "True"}
@@ -26,7 +26,7 @@ def upload_cv(file_bytes: bytes, file_name: str, content_type: str = "applicatio
 def get_cv_signed_url(path: str, expires_in: int = 36000) -> str:
      # Generate a signed URL for a CV file valid for 1 hour.
 
-     res = supabase.storage_from(BUCKET).create_signed_url(path, expires_in)
+     res = supabase.storage.from_(BUCKET).create_signed_url(path, expires_in)
 
      return res["signedURL"]
 
