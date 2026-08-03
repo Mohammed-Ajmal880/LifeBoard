@@ -1,10 +1,10 @@
 import { useState } from 'react'
 
 const STATUS_COLOURS = {
-  applied:   { bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.4)',  color: '#60a5fa' },
-  interview: { bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.4)',  color: '#fb923c' },
-  offer:     { bg: 'rgba(34,197,94,0.15)',   border: 'rgba(34,197,94,0.4)',   color: '#4ade80' },
-  rejected:  { bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.4)',   color: '#f87171' },
+  applied: { bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.4)', color: '#60a5fa' },
+  interview: { bg: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.4)', color: '#fb923c' },
+  offer: { bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.4)', color: '#4ade80' },
+  rejected: { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)', color: '#f87171' },
 }
 
 function StatusBadge({ status, hovered }) {
@@ -14,32 +14,32 @@ function StatusBadge({ status, hovered }) {
 
   return (
     <span style={{
-      display:      'inline-flex',
-      alignItems:   'center',
-      gap:          '5px',
-      padding:      '3px 10px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px',
+      padding: '3px 10px',
       borderRadius: '20px',
-      fontSize:     '11px',
-      fontWeight:   600,
-      background:   colours.bg,
-      border:       `1px solid ${colours.border}`,
-      color:        colours.color,
-      transition:   'all 0.25s',
-      whiteSpace:   'nowrap',
+      fontSize: '11px',
+      fontWeight: 600,
+      background: colours.bg,
+      border: `1px solid ${colours.border}`,
+      color: colours.color,
+      transition: 'all 0.25s',
+      whiteSpace: 'nowrap',
     }}>
       <span style={{
-        width:        '5px',
-        height:       '5px',
+        width: '5px',
+        height: '5px',
         borderRadius: '50%',
-        background:   colours.color,
-        display:      'inline-block',
+        background: colours.color,
+        display: 'inline-block',
       }} />
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   )
 }
 
-function ApplicationTable({ applications, cvVersions, onEdit, onDelete }) {
+function ApplicationTable({ applications, cvVersions, onView, onEdit, onDelete }) {
   const getCV = (id) => cvVersions.find(cv => cv.id === id)
 
   return (
@@ -70,6 +70,7 @@ function ApplicationTable({ applications, cvVersions, onEdit, onDelete }) {
                   key={app.id}
                   app={app}
                   cv={cv}
+                  onView={onView}
                   onEdit={onEdit}
                   onDelete={onDelete}
                 />
@@ -82,11 +83,12 @@ function ApplicationTable({ applications, cvVersions, onEdit, onDelete }) {
   )
 }
 
-function TableRow({ app, cv, onEdit, onDelete }) {
+function TableRow({ app, cv, onView, onEdit, onDelete }) {
   const [hovered, setHovered] = useState(false)
 
   return (
     <tr
+      onClick={() => onView(app)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -101,14 +103,20 @@ function TableRow({ app, cv, onEdit, onDelete }) {
         <div className="td-actions">
           <button
             className="action-btn"
-            onClick={() => onEdit(app)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(app)
+            }}
             title="Update"
           >
             ✏ Update
           </button>
           <button
             className="action-btn danger"
-            onClick={() => onDelete(app.id)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(app.id)
+            }}
             title="Delete"
           >
             🗑 Delete

@@ -5,6 +5,7 @@ import ApplicationTable from '../components/interntrack/ApplicationTable'
 import ApplicationModal from '../components/interntrack/ApplicationModal'
 import CVVault from '../components/interntrack/CVVault'
 import ConfirmModal from '../components/common/ConfirmModal'
+import ApplicationDetail from '../components/interntrack/ApplicationDetail'
 
 const TABS = ['Applications', 'CV Vault']
 const VIEWS = ['Kanban', 'Table']
@@ -17,8 +18,10 @@ function InternTrackPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingApp, setEditingApp] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [confirmOpen, setConfirmOpen]   = useState(false)
-  const [deletingId,  setDeletingId]    = useState(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const [detailApp, setDetailApp] = useState(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   const fetchAll = async () => {
     try {
@@ -73,22 +76,27 @@ function InternTrackPage() {
   }
 
   const handleDelete = (id) => {
-  setDeletingId(id)
-  setConfirmOpen(true)
-}
-
-const confirmDelete = async () => {
-  try {
-    await api.delete(`/applications/${deletingId}`)
-    fetchAll()
-  } catch (err) {
-    console.error(err)
+    setDeletingId(id)
+    setConfirmOpen(true)
   }
-}
+
+  const confirmDelete = async () => {
+    try {
+      await api.delete(`/applications/${deletingId}`)
+      fetchAll()
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const handleAddNew = () => {
     setEditingApp(null)
     setModalOpen(true)
+  }
+
+  const handleViewDetail = (app) => {
+    setDetailApp(app)
+    setDetailOpen(true)
   }
 
   // Stats computed from applications
@@ -108,7 +116,7 @@ const confirmDelete = async () => {
 
   return (
     <div className="page-container">
-      
+
 
       {/* Page header */}
       <div className="page-header">
@@ -236,6 +244,7 @@ const confirmDelete = async () => {
             <KanbanBoard
               applications={applications}
               cvVersions={cvVersions}
+              onView={handleViewDetail}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -243,6 +252,7 @@ const confirmDelete = async () => {
             <ApplicationTable
               applications={applications}
               cvVersions={cvVersions}
+              onView={handleViewDetail}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -264,12 +274,23 @@ const confirmDelete = async () => {
         application={editingApp}
         cvVersions={cvVersions}
       />
+
+      {/* Application Detail Modal */}
+      <ApplicationDetail
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setDetailApp(null) }}
+        application={detailApp}
+        cvVersions={cvVersions}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
       <ConfirmModal
-      open={confirmOpen}
-      onClose={() => { setConfirmOpen(false); setDeletingId(null) }}
-      onConfirm={confirmDelete}
-      title="Delete Application?"
-      message="This application will be permanently deleted."
+        open={confirmOpen}
+        onClose={() => { setConfirmOpen(false); setDeletingId(null) }}
+        onConfirm={confirmDelete}
+        title="Delete Application?"
+        message="This application will be permanently deleted."
       />
     </div>
   )

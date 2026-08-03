@@ -5,7 +5,7 @@ const COLUMNS = [
   { key: 'rejected', label: 'Rejected', color: '#f87171' },
 ]
 
-function KanbanBoard({ applications, cvVersions, onEdit, onDelete }) {
+function KanbanBoard({ applications, cvVersions, onView, onEdit, onDelete }) {
   const getCV = (id) => cvVersions.find(cv => cv.id === id)
 
   const grouped = COLUMNS.reduce((acc, col) => {
@@ -118,6 +118,7 @@ function KanbanBoard({ applications, cvVersions, onEdit, onDelete }) {
                 return (
                   <div
                     key={app.id}
+                    onClick={() => onView(app)}
                     style={{
                       background: 'rgba(255,255,255,0.05)',
                       border: '1px solid var(--glass-border-strong)',
@@ -183,7 +184,11 @@ function KanbanBoard({ applications, cvVersions, onEdit, onDelete }) {
                       paddingTop: '8px',
                     }}>
                       <button
-                        onClick={() => onEdit(app)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit(app)
+                        }}
+
                         style={{
                           flex: 1,
                           background: 'none',
@@ -211,7 +216,11 @@ function KanbanBoard({ applications, cvVersions, onEdit, onDelete }) {
                         ✏ Update
                       </button>
                       <button
-                        onClick={() => onDelete(app.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(app.id)
+                        }}
+
                         style={{
                           flex: 1,
                           background: 'none',
