@@ -25,3 +25,7 @@ dist-ssr
 
 @ Environment Variables
 .env
+
+@ Audio Tracks
+*.mp3
+*.wav
