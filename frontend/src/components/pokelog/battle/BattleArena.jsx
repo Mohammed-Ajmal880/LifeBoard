@@ -19,6 +19,8 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [selectingPokemon, setSelectingPokemon] = useState(true)
   const [selectReason, setSelectReason] = useState('lead')
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [attacking, setAttacking] = useState(null)
+  const [hitTarget, setHitTarget] = useState(null) // 'player' | 'opponent' | null
 
 
   const spriteMap = Object.fromEntries(
@@ -39,9 +41,17 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   }
 
   const handleMove = async (move) => {
-    if (waiting || battleOver || playerPokemon.current_hp === 0) return
+    if (waiting || battleOver || playerPokemon.current_hp === 0)
+      return
+
+    // 1. PLAYER ATTACKS
+    setAttacking('player')
+    setTimeout(() => setHitTarget('opponent'), 200) // Impact starts at 200ms
+    setTimeout(() => setAttacking(null), 450)        // Lunge returns at 450ms
+    setTimeout(() => setHitTarget(null), 600)        // Shake completes at 600ms
 
     setWaiting(true)
+
     try {
       const res = await api.post(`/battles/${state.battle_id}/move`, {
         move_name: move.name,
@@ -50,6 +60,14 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
         active_slot: state.team1[state.active1].slot,
       })
       const data = res.data
+
+      // 2. OPPONENT ATTACKS (Gives time for player turn to finish)
+      setTimeout(() => {
+        setAttacking('opponent')
+        setTimeout(() => setHitTarget('player'), 200) // Impact starts at 200ms
+        setTimeout(() => setAttacking(null), 450)        // Lunge returns at 450ms
+        setTimeout(() => setHitTarget(null), 600)        // Shake completes at 600ms
+      }, 100)
 
       setState(prev => ({
         ...prev,
@@ -230,13 +248,17 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
             <img
               src={opponentPokemon.sprite}
               alt={opponentPokemon.name}
+              className={attacking === 'opponent' ? 'attack-opponent' : hitTarget === 'opponent' ? 'defender-hit' : ''
+              }
               style={{ position: 'absolute', right: '120px', top: '80px', width: '160px', height: '160px', imageRendering: 'pixelated', filter: opponentPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 12px rgba(59,130,246,0.4))', transition: 'filter 0.5s ease' }}
             />
 
             <img
               src={playerPokemon.back_sprite || playerPokemon.sprite}
               alt={playerPokemon.name}
-              style={{ position: 'absolute', left: '60px', bottom: '80px', width: '200px', height: '200px', imageRendering: 'pixelated', filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))', transition: 'filter 0.5s ease', transform: 'scaleX(1)' }}
+              className={attacking === 'player' ? 'attack-player' : hitTarget === 'player' ? 'defender-hit' : ''
+              }
+              style={{ position: 'absolute', left: '60px', bottom: '80px', width: '200px', height: '200px', imageRendering: 'pixelated', filter: playerPokemon.current_hp === 0 ? 'grayscale(1) opacity(0.3)' : 'drop-shadow(0 0 16px rgba(124,58,237,0.5))', transition: 'filter 0.5s ease' }}
             />
 
             <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 16px', minWidth: '240px', backdropFilter: 'blur(8px)' }}>

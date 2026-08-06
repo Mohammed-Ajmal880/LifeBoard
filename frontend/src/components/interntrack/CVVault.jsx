@@ -220,7 +220,6 @@ function CVVault({ cvVersions, onRefresh }) {
     setSelectedPreviewCV(cv)
     setPreviewOpen(true)
   }
-
   return (
     <div style={{ position: 'relative' }}>
       {/* Ambient Background Glows */}
