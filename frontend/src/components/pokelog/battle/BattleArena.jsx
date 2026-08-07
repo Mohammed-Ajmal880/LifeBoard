@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import HPBar from './HPBar'
 import MoveSelector from './MoveSelector'
 import BattleLog from './BattleLog'
@@ -7,6 +7,23 @@ import api from '../../../services/api'
 import PokemonSelectModal from './PokemonSelectModal'
 import ArenaBackground from './ArenaBackground'
 import ConfirmModal from '../../common/ConfirmModal'
+
+// Helper to fetch and play official Showdown Pokémon cries
+const playPokemonCry = (pokemonName, volume = 0.15) => {
+  if (!pokemonName) return
+
+  // Clean name to match Showdown format (e.g., "Tapu Koko" -> "tapukoko")
+  const formattedName = pokemonName.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const cryUrl = `https://play.pokemonshowdown.com/audio/cries/${formattedName}.mp3`
+
+  const audio = new Audio(cryUrl)
+  audio.volume = volume
+  audio.play().catch(err => {
+    console.warn(`Could not play cry for ${pokemonName}:`, err)
+  })
+}
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [state, setState] = useState(battleState)
@@ -20,7 +37,77 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   const [selectReason, setSelectReason] = useState('lead')
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [attacking, setAttacking] = useState(null)
-  const [hitTarget, setHitTarget] = useState(null) // 'player' | 'opponent' | null
+  const [hitTarget, setHitTarget] = useState(null)
+  const bgmRef = useRef(null) // Reference for the audio element to play background music
+  const cryRef = useRef(null) // Reference for the audio element to play Pokémon cries
+
+  // 1. Player Pokémon Entrance Cry
+  useEffect(() => {
+    if (!open || selectingPokemon) return
+
+    const playerPoke = state.team1[state.active1]
+    if (playerPoke && playerPoke.current_hp > 0) {
+      playPokemonCry(playerPoke.name)
+    }
+  }, [open, selectingPokemon, state.active1])
+
+  // 2. Opponent Pokémon Entrance Cry
+  useEffect(() => {
+    if (!open || selectingPokemon) return
+
+    const opponentPoke = state.team2[state.active2]
+    if (opponentPoke && opponentPoke.current_hp > 0) {
+      playPokemonCry(opponentPoke.name)
+    }
+  }, [open, selectingPokemon, state.active2])
+
+  useEffect(() => {
+    // 1. Initialize Battle Theme (Using your uploaded track name)
+    bgmRef.current = new Audio('https://2xssxetuewd7953l.public.blob.vercel-storage.com/xy-trainer.mp3')
+    bgmRef.current.loop = true
+    bgmRef.current.volume = 0.05 // Comfortable background level
+
+    // 2. Initialize Pokémon Cry SFX
+    cryRef.current = new Audio('https://2xssxetuewd7953l.public.blob.vercel-storage.com/Pokeon_Cry.wav')
+    cryRef.current.volume = 0.65
+
+    // 3. Stop music if the user navigates away or modal unmounts
+    return () => {
+      if (bgmRef.current) {
+        bgmRef.current.pause()
+        bgmRef.current.currentTime = 0
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!bgmRef.current) return
+
+    // Only hold music during initial lead selection; keep playing during faint swaps
+    const isSelectingLead = selectingPokemon && selectReason === 'lead'
+
+    if (open && !isSelectingLead && !battleOver) {
+      bgmRef.current.play().catch(err => {
+        console.log('Autoplay deferred by browser interaction policy:', err)
+      })
+    } else {
+      // Pause immediately if battle ends, modal closes, or initial lead picker opens
+      bgmRef.current.pause()
+      if (battleOver) {
+        bgmRef.current.currentTime = 0 // Rewind track for next match
+      }
+    }
+  }, [open, selectingPokemon, selectReason, battleOver])
+
+  useEffect(() => {
+    if (hitTarget && cryRef.current) {
+      cryRef.current.currentTime = 0 // Rewind so rapid hits don't get cut off
+      cryRef.current.play().catch(err => {
+        console.log('SFX error:', err)
+      })
+    }
+  }, [hitTarget])
+
 
 
   const spriteMap = Object.fromEntries(
@@ -41,63 +128,124 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
   }
 
   const handleMove = async (move) => {
-    if (waiting || battleOver || playerPokemon.current_hp === 0)
-      return
+  if (waiting || battleOver || playerPokemon.current_hp === 0) return
 
-    // 1. PLAYER ATTACKS
+  setWaiting(true)
+
+  try {
+    // 1. Start backend calculation & player lunge at the exact same time (no delay)
+    const apiPromise = api.post(`/battles/${state.battle_id}/move`, {
+      move_name: move.name,
+      move_power: move.power || 40,
+      move_type: move.type,
+      active_slot: state.team1[state.active1].slot,
+    })
+
+    // Player attack animation immediately
     setAttacking('player')
-    setTimeout(() => setHitTarget('opponent'), 200) // Impact starts at 200ms
-    setTimeout(() => setAttacking(null), 450)        // Lunge returns at 450ms
-    setTimeout(() => setHitTarget(null), 600)        // Shake completes at 600ms
+    await sleep(200)
+    setHitTarget('opponent')
 
-    setWaiting(true)
+    // Wait for backend move calculations to complete
+    const res = await apiPromise
+    const data = res.data
 
-    try {
-      const res = await api.post(`/battles/${state.battle_id}/move`, {
-        move_name: move.name,
-        move_power: move.power || 40,
-        move_type: move.type,
-        active_slot: state.team1[state.active1].slot,
-      })
-      const data = res.data
+    const playerLog = data.log.length > 0 ? [data.log[0]] : []
+    const opponentLog = data.log.slice(1)
 
-      // 2. OPPONENT ATTACKS (Gives time for player turn to finish)
-      setTimeout(() => {
-        setAttacking('opponent')
-        setTimeout(() => setHitTarget('player'), 200) // Impact starts at 200ms
-        setTimeout(() => setAttacking(null), 450)        // Lunge returns at 450ms
-        setTimeout(() => setHitTarget(null), 600)        // Shake completes at 600ms
-      }, 100)
+    const currentOpponentIdx = state.active2
+    const updatedOpponent = data.opponent_team.find(p => p.name === opponentPokemon.name)
+    const opponentFainted = updatedOpponent && updatedOpponent.fainted
 
+    // 💥 DROP OPPONENT HP IMMEDIATELY ON IMPACT (Keep current active2 so fainted pokemon stays on screen)
+    setState(prev => ({
+      ...prev,
+      team2: data.opponent_team,
+      active2: currentOpponentIdx,
+    }))
+    if (playerLog.length > 0) setLog(prev => [...prev, ...playerLog])
+
+    // 💀 PLAY FAINT CRY IMMEDIATELY ON IMPACT
+    if (opponentFainted) {
+      playPokemonCry(opponentPokemon.name, 0.3)
+    }
+
+    await sleep(250)
+    setAttacking(null)
+    await sleep(150)
+    setHitTarget(null)
+
+    // Pause to watch the opponent HP bar drain & hear faint cry
+    await sleep(500)
+
+    // 🔄 IF OPPONENT FAINTED & MATCH IS NOT OVER: SWAP IN NEW OPPONENT
+    const newOpponentIdx = data.opponent_team.findIndex(p => p.name === data.opponent_pokemon?.name)
+    if (opponentFainted && !data.battle_over && newOpponentIdx !== -1 && newOpponentIdx !== currentOpponentIdx) {
+      setState(prev => ({
+        ...prev,
+        active2: newOpponentIdx,
+      }))
+      await sleep(400) // Brief pause while new opponent steps out & plays entrance cry
+    }
+
+    // =========================================================
+    // PHASE 2: OPPONENT COUNTER-ATTACK (If opponent survived)
+    // =========================================================
+    const updatedPlayerPoke = data.player_team.find(p => p.name === playerPokemon.name)
+    const playerTookDamage = updatedPlayerPoke && updatedPlayerPoke.current_hp < playerPokemon.current_hp
+
+    if (!opponentFainted && playerTookDamage) {
+      setAttacking('opponent')
+      await sleep(200)
+      setHitTarget('player')
+
+      // 💥 DROP PLAYER HP IMMEDIATELY ON IMPACT
       setState(prev => ({
         ...prev,
         team1: data.player_team,
-        team2: data.opponent_team,
         active1: data.player_team.findIndex(p => p.name === data.player_pokemon.name),
-        active2: data.opponent_team.findIndex(p => p.name === data.opponent_pokemon.name),
       }))
+      if (opponentLog.length > 0) setLog(prev => [...prev, ...opponentLog])
 
-      setLog(prev => [...prev, ...data.log])
-
-      if (data.battle_over) {
-        setBattleOver(true)
-        setWinner(data.winner)
-      } else {
-        const serverActivePoke = data.player_team.find(p => p.name === playerPokemon.name)
-        if (serverActivePoke && serverActivePoke.fainted) {
-          const aliveRemaining = data.player_team.filter(p => !p.fainted)
-          if (aliveRemaining.length > 0) {
-            setSelectReason('faint')
-            setSelectingPokemon(true)
-          }
-        }
+      // 💀 PLAY PLAYER FAINT CRY IF FAINTED
+      if (updatedPlayerPoke && updatedPlayerPoke.fainted) {
+        playPokemonCry(playerPokemon.name, 0.3)
       }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setWaiting(false)
+
+      await sleep(250)
+      setAttacking(null)
+      await sleep(150)
+      setHitTarget(null)
+
+      // Brief pause to watch player HP bar drain
+      await sleep(300)
+    } else if (opponentLog.length > 0) {
+      // Append leftover logs if opponent didn't counter-attack
+      setLog(prev => [...prev, ...opponentLog])
     }
+
+    // =========================================================
+    // PHASE 3: FAINTING & VICTORY LOGIC
+    // =========================================================
+    if (data.battle_over) {
+      setBattleOver(true)
+      setWinner(data.winner)
+    } else if (updatedPlayerPoke && updatedPlayerPoke.fainted) {
+      const aliveRemaining = data.player_team.filter(p => !p.fainted)
+      if (aliveRemaining.length > 0) {
+        setSelectReason('faint')
+        setSelectingPokemon(true) // Faint modal opens after all animations finish
+      }
+    }
+
+  } catch (err) {
+    console.error('Turn execution error:', err)
+  } finally {
+    setAttacking(null)
+    setHitTarget(null)
+    setWaiting(false)
   }
+}
 
   const handlePokemonSelect = async (pokemon) => {
     const newIdx = state.team1.findIndex(p => p.name === pokemon.name);
@@ -267,7 +415,7 @@ function BattleArena({ open, onClose, battleState, goesFirst }) {
 
             {!battleOver && (
               <div style={{ position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)', background: waiting ? 'rgba(255,255,255,0.08)' : 'rgba(124,58,237,0.3)', border: '1px solid rgba(124,58,237,0.5)', borderRadius: '20px', padding: '6px 18px', fontSize: '11px', fontWeight: 600, color: waiting ? 'var(--text-muted)' : '#fff', letterSpacing: '0.08em', textTransform: 'uppercase', transition: 'all 0.3s' }}>
-                {waiting ? '⏳ Processing...' : '⚡ Your turn'}
+                {waiting ? 'Opponents Turn...' : 'Your turn'}
               </div>
             )}
           </ArenaBackground>
